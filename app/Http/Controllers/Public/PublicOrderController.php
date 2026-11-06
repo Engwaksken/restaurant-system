@@ -5,21 +5,24 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PublicOrderConfirmation;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Restaurant;
+use App\Services\Inventory\RecipeInventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Response;
 
 class PublicOrderController extends Controller
 {
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, RecipeInventoryService $inventory): RedirectResponse
     {
         $restaurant = Restaurant::query()
             ->where('code', config('restaurant.public_code'))
@@ -58,7 +61,7 @@ class PublicOrderController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $order = DB::transaction(function () use ($validated, $restaurant, $singleBranchId): array {
+        $order = DB::transaction(function () use ($validated, $restaurant, $singleBranchId, $inventory): array {
             $itemsById = MenuItem::query()
                 ->where('restaurant_id', $restaurant->id)
                 ->where('is_available', true)
@@ -85,12 +88,18 @@ class PublicOrderController extends Controller
                     'address' => $validated['address'] ?? null,
                 ]
             );
+            if (!$customer->wasRecentlyCreated && !$customer->email && !empty($validated['email'])) {
+                $customer->forceFill(['email' => $validated['email']])->save();
+            }
 
             $subtotal = 0.0;
             foreach ($validated['items'] as $line) {
                 $subtotal += (float) $itemsById[$line['menu_item_id']]->price * (float) $line['quantity'];
             }
             $subtotal = round($subtotal, 2);
+            $tax = round($subtotal * max(0, min(100, (float) config('restaurant.tax_rate', 0))) / 100, 2);
+            $deliveryFee = max(0, (float) config('restaurant.delivery_fee', 0));
+            $total = $subtotal + $tax + $deliveryFee;
             $trackingToken = bin2hex(random_bytes(32));
 
             $order = Order::create([
@@ -101,10 +110,11 @@ class PublicOrderController extends Controller
                 'status' => 'pending',
                 'subtotal' => $subtotal,
                 'discount' => 0,
-                'tax' => 0,
-                'total' => $subtotal,
+                'tax' => $tax,
+                'delivery_fee' => $deliveryFee,
+                'total' => $total,
                 'paid_amount' => 0,
-                'balance' => $subtotal,
+                'balance' => $total,
                 'notes' => $validated['notes'] ?? null,
                 'ordered_at' => now(),
             ]);
@@ -122,10 +132,21 @@ class PublicOrderController extends Controller
                 ]);
             }
 
+            $inventory->consume((int) $restaurant->id, $branchId, $validated['items'], null, (int) $order->id);
+
             return [$order, $trackingToken];
         });
 
-        [, $trackingToken] = $order;
+        [$orderRecord, $trackingToken] = $order;
+
+        $email = $validated['email'] ?? $orderRecord->customer?->email;
+        if ($email) {
+            try {
+                Mail::to($email)->send(new PublicOrderConfirmation($orderRecord, $trackingToken));
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
 
         return redirect()->route('order.success', ['order' => $trackingToken]);
     }
@@ -134,14 +155,22 @@ class PublicOrderController extends Controller
     {
         $record = $this->findPublicOrder($order);
 
-        return response()->view('public.orders.success', ['order' => $record, 'trackingToken' => $order])
+        return response()->view('public.orders.success', [
+            'order' => $record,
+            'trackingToken' => $order,
+            'gateways' => $this->enabledGateways(),
+        ])
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Referrer-Policy', 'no-referrer');
     }
 
     public function track(string $order): Response
     {
-        return response()->view('public.orders.track', ['order' => $this->findPublicOrder($order)])
+        return response()->view('public.orders.track', [
+            'order' => $this->findPublicOrder($order),
+            'trackingToken' => $order,
+            'gateways' => $this->enabledGateways(),
+        ])
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Referrer-Policy', 'no-referrer');
     }
@@ -154,5 +183,18 @@ class PublicOrderController extends Controller
             ->where('tracking_token_hash', hash('sha256', $token))
             ->with(['items', 'branch'])
             ->firstOrFail();
+    }
+
+    private function enabledGateways(): array
+    {
+        return collect(config('restaurant.gateways', []))
+            ->filter(fn (array $gateway, string $name): bool =>
+                ($gateway['enabled'] ?? false)
+                && ($name === 'flutterwave'
+                    ? !empty($gateway['secret_key'])
+                    : !empty($gateway['consumer_key']) && !empty($gateway['consumer_secret']) && !empty($gateway['notification_id']))
+            )
+            ->map(fn (array $gateway, string $name): string => ucfirst($name))
+            ->all();
     }
 }

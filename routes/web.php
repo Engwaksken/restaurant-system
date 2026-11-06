@@ -4,14 +4,23 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\ChatbotController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\MenuItemController;
+use App\Http\Controllers\Admin\MenuCategoryController;
 use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\PermissionManagementController;
 use App\Http\Controllers\Admin\PosController;
+use App\Http\Controllers\Admin\PurchasingController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\RecipeController;
+use App\Http\Controllers\Admin\StockTransferController;
+use App\Http\Controllers\Admin\WastageController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Public\PublicOrderController;
+use App\Http\Controllers\Public\PublicOrderPaymentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -51,6 +60,15 @@ Route::prefix('order')
             '/track/{order}',
             [PublicOrderController::class, 'track']
         )->middleware('throttle:60,1')->name('track');
+
+        Route::post('/pay/{order}', [PublicOrderPaymentController::class, 'pay'])
+            ->middleware('throttle:5,1')
+            ->name('pay');
+
+        Route::get('/payment-return/{order}/{payment}', [PublicOrderPaymentController::class, 'complete'])
+            ->whereNumber('payment')
+            ->middleware('throttle:30,1')
+            ->name('payment.return');
     });
 
 
@@ -128,6 +146,15 @@ Route::middleware('auth')
             'edit',
         ]);
 
+        Route::get('/menu-categories', [MenuCategoryController::class, 'index'])->name('menu-categories.index');
+        Route::post('/menu-categories', [MenuCategoryController::class, 'store'])->name('menu-categories.store');
+        Route::put('/menu-categories/{category}', [MenuCategoryController::class, 'update'])
+            ->whereNumber('category')
+            ->name('menu-categories.update');
+        Route::delete('/menu-categories/{category}', [MenuCategoryController::class, 'destroy'])
+            ->whereNumber('category')
+            ->name('menu-categories.destroy');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -145,6 +172,49 @@ Route::middleware('auth')
             '/pos/checkout',
             [PosController::class, 'checkout']
         )->name('pos.checkout');
+
+        Route::get('/recipes', [RecipeController::class, 'index'])->name('recipes.index');
+        Route::post('/recipes', [RecipeController::class, 'store'])->name('recipes.store');
+        Route::delete('/recipes/{recipe}', [RecipeController::class, 'destroy'])
+            ->whereNumber('recipe')
+            ->name('recipes.destroy');
+
+        Route::get('/inventory/products', [InventoryController::class, 'index'])->name('inventory.products');
+        Route::get('/inventory/categories', [InventoryController::class, 'index'])->name('inventory.categories');
+        Route::get('/inventory/stock', [InventoryController::class, 'stock'])->name('inventory.stock');
+        Route::get('/inventory/adjustments', [InventoryController::class, 'adjustments'])->name('inventory.adjustments');
+        Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->name('inventory.low-stock');
+        Route::get('/inventory/transfers', [StockTransferController::class, 'index'])->name('inventory.transfers');
+        Route::post('/inventory/transfers', [StockTransferController::class, 'store'])->name('inventory.transfers.store');
+        Route::get('/inventory/wastage', [WastageController::class, 'index'])->name('inventory.wastage');
+        Route::post('/inventory/wastage', [WastageController::class, 'store'])->name('inventory.wastage.store');
+        Route::post('/inventory/products', [InventoryController::class, 'storeItem'])->name('inventory.products.store');
+        Route::post('/inventory/categories', [InventoryController::class, 'storeCategory'])->name('inventory.categories.store');
+        Route::post('/inventory/stock-adjustments', [InventoryController::class, 'adjustStock'])->name('inventory.stock.adjust');
+
+        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::post('/expense-categories', [ExpenseController::class, 'storeCategory'])->name('expense-categories.store');
+
+        Route::get('/suppliers', [PurchasingController::class, 'suppliers'])->name('suppliers.index');
+        Route::post('/suppliers', [PurchasingController::class, 'storeSupplier'])->name('suppliers.store');
+        Route::get('/purchases', [PurchasingController::class, 'purchases'])->name('purchases.index');
+        Route::post('/purchases/receive', [PurchasingController::class, 'receive'])->name('purchases.receive');
+        Route::get('/purchase-orders', [PurchasingController::class, 'purchaseOrders'])->name('purchase-orders.index');
+        Route::post('/purchase-orders', [PurchasingController::class, 'storePurchaseOrder'])->name('purchase-orders.store');
+        Route::patch('/purchase-orders/{purchaseOrder}/cancel', [PurchasingController::class, 'cancelPurchaseOrder'])
+            ->whereNumber('purchaseOrder')->name('purchase-orders.cancel');
+        Route::get('/purchase-orders/{purchaseOrder}/receive', [PurchasingController::class, 'receivePurchaseOrderForm'])
+            ->whereNumber('purchaseOrder')->name('purchase-orders.receive');
+        Route::post('/purchases/{purchase}/payments', [PurchasingController::class, 'recordSupplierPayment'])
+            ->whereNumber('purchase')->name('purchases.payments.store');
+        Route::get('/supplier-payments', [PurchasingController::class, 'purchases'])->name('supplier-payments.index');
+
+        Route::get('/settings/roles-permissions', [PermissionManagementController::class, 'index'])
+            ->name('settings.roles-permissions');
+        Route::put('/settings/roles-permissions/{staff}', [PermissionManagementController::class, 'update'])
+            ->whereNumber('staff')
+            ->name('settings.roles-permissions.update');
 
 
         /*
@@ -257,6 +327,10 @@ Route::middleware('auth')
             '/chatbot',
             [ChatbotController::class, 'index']
         )->name('chatbot.index');
+
+        Route::get('/chatbot/{conversation}', [ChatbotController::class, 'show'])
+            ->whereNumber('conversation')
+            ->name('chatbot.show');
 
 
         Route::post(

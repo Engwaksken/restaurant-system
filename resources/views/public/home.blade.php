@@ -546,31 +546,35 @@
                     </div>
 
                     <div class="col-lg-5 p-3 bg-light">
-                        <div class="order-section-title mb-2">Delivery details</div>
+                        <div class="order-section-title mb-1">Delivery details</div>
+                        <div class="small text-muted mb-2"><span class="text-danger" aria-hidden="true">*</span> Required</div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-sm-6">
-                                <label class="form-label" for="customerName">Name</label>
-                                <input class="form-control form-control-sm" id="customerName" name="name" value="{{ old('name') }}" required maxlength="255">
+                                <label class="form-label" for="customerName">Full name <span class="text-danger" aria-hidden="true">*</span></label>
+                                <input class="form-control form-control-sm" id="customerName" name="name" value="{{ old('name') }}" required maxlength="255" placeholder="e.g. Amina Kato" autocomplete="name">
                             </div>
                             <div class="col-sm-6">
-                                <label class="form-label" for="customerPhone">Phone</label>
-                                <input class="form-control form-control-sm" id="customerPhone" name="phone" value="{{ old('phone') }}" required maxlength="40">
+                                <label class="form-label" for="customerPhone">Phone number <span class="text-danger" aria-hidden="true">*</span></label>
+                                <input class="form-control form-control-sm" id="customerPhone" type="tel" name="phone" value="{{ old('phone') }}" required maxlength="40" placeholder="e.g. 0700 000 000" autocomplete="tel">
+                                <div class="form-text">We call this number only about your order.</div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label" for="customerEmail">Email <span class="text-muted fw-normal">(optional)</span></label>
-                                <input class="form-control form-control-sm" id="customerEmail" type="email" name="email" value="{{ old('email') }}" maxlength="255">
+                                <input class="form-control form-control-sm" id="customerEmail" type="email" name="email" value="{{ old('email') }}" maxlength="255" placeholder="e.g. name@example.com" autocomplete="email">
+                                <div class="form-text">Get a receipt and enable online payment.</div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label" for="customerAddress">Delivery address <span class="text-muted fw-normal">(optional)</span></label>
-                                <input class="form-control form-control-sm" id="customerAddress" name="address" value="{{ old('address') }}" maxlength="1000">
+                                <input class="form-control form-control-sm" id="customerAddress" name="address" value="{{ old('address') }}" maxlength="1000" placeholder="e.g. Plot 12, Kampala Road, near the fuel station" autocomplete="street-address">
                             </div>
                             @if($branches->count() > 1)
                                 <div class="col-12">
-                                    <label class="form-label" for="orderBranch">Branch</label>
+                                    <label class="form-label" for="orderBranch">Branch <span class="text-danger" aria-hidden="true">*</span></label>
                                     <select class="form-select form-select-sm" id="orderBranch" name="branch_id" required>
+                                        <option value="" disabled selected>Choose a branch</option>
                                         @foreach($branches as $branch)
-                                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                            <option value="{{ $branch->id }}" @selected(old('branch_id') == $branch->id)>{{ $branch->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -578,8 +582,8 @@
                                 <input type="hidden" name="branch_id" value="{{ $branches->first()->id }}">
                             @endif
                             <div class="col-12">
-                                <label class="form-label" for="orderNotes">Notes <span class="text-muted fw-normal">(optional)</span></label>
-                                <textarea class="form-control form-control-sm" id="orderNotes" name="notes" rows="2" maxlength="1000">{{ old('notes') }}</textarea>
+                                <label class="form-label" for="orderNotes">Order notes <span class="text-muted fw-normal">(optional)</span></label>
+                                <textarea class="form-control form-control-sm" id="orderNotes" name="notes" rows="2" maxlength="1000" placeholder="e.g. Less spicy, no onions, ring the bell twice">{{ old('notes') }}</textarea>
                             </div>
                         </div>
 

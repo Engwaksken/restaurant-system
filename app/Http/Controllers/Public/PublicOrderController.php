@@ -157,7 +157,7 @@ class PublicOrderController extends Controller
 
         return Order::query()
             ->where('tracking_token_hash', hash('sha256', $token))
-            ->with(['items', 'branch', 'feedback'])
+            ->with(['items', 'branch.restaurant', 'feedback'])
             ->firstOrFail();
     }
 

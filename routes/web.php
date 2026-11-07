@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\KitchenController;
 use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\PermissionManagementController;
 use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\PurchasingController;
@@ -237,6 +238,11 @@ Route::middleware('auth')
 
         Route::get('/settings/restaurant', [BrandingController::class, 'edit'])->name('settings.restaurant');
         Route::put('/settings/restaurant', [BrandingController::class, 'update'])->name('settings.restaurant.update');
+
+        Route::get('/settings/payment-gateways', [PaymentGatewayController::class, 'edit'])->name('settings.payment-gateways');
+        Route::put('/settings/payment-gateways/{gateway}', [PaymentGatewayController::class, 'update'])
+            ->where('gateway', '[a-z]+')
+            ->name('settings.payment-gateways.update');
 
         Route::get('/settings/branches', [BranchController::class, 'index'])->name('settings.branches');
         Route::post('/settings/branches', [BranchController::class, 'store'])->name('settings.branches.store');

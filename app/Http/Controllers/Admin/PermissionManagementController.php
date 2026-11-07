@@ -70,6 +70,7 @@ class PermissionManagementController extends Controller
         'settings.roles-permissions.manage' => 'Manage staff permissions',
         'settings.activity-logs.view' => 'View the restaurant activity log',
         'settings.branches.manage' => 'Manage branches (restaurant-wide staff only)',
+        'settings.payment-gateways.manage' => 'Configure online payment gateways (restaurant-wide staff only)',
         'settings.branding.manage' => 'Manage restaurant branding, logo, favicon and email styling',
         'employees.staff.manage' => 'Create, edit and deactivate staff accounts',
         'employees.attendance.manage' => 'View, record and correct staff attendance',

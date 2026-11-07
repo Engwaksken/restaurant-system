@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payments\FlutterwaveGateway;
+use App\Services\Payments\GatewaySettings;
 use App\Services\Payments\PesapalGateway;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,8 +27,10 @@ class PublicOrderPaymentController extends Controller
         $data = $request->validate(['gateway' => ['required', 'in:flutterwave,pesapal']]);
         abort_unless(filter_var($record->customer?->email, FILTER_VALIDATE_EMAIL), 422, 'A valid email address is required for online payment.');
         $provider = $data['gateway'];
-        $settings = config('restaurant.gateways.' . $provider);
-        abort_unless(($settings['enabled'] ?? false) && $this->hasGatewayCredentials($provider, $settings), 503, 'This online payment method is not available.');
+        $gatewaySettings = app(GatewaySettings::class);
+        $gatewaySettings->apply($record->branch?->restaurant);
+        $settings = (array) config('restaurant.gateways.' . $provider, []);
+        abort_unless($gatewaySettings->isReady($provider, $settings), 503, 'This online payment method is not available.');
         abort_if((float) $record->balance <= 0, 422, 'This order has no outstanding balance.');
 
         $payment = DB::transaction(function () use ($record, $provider): Payment {
@@ -135,6 +138,8 @@ class PublicOrderPaymentController extends Controller
 
         $provider = $attempt->payment_method;
         abort_unless(in_array($provider, ['flutterwave', 'pesapal'], true), 404);
+        // Verify with the same restaurant credentials that started the checkout.
+        app(GatewaySettings::class)->apply($record->branch?->restaurant);
         $verificationReference = $provider === 'pesapal'
             ? (string) data_get($attempt->gateway_response, 'order_tracking_id', '')
             : (string) $attempt->transaction_reference;
@@ -206,15 +211,8 @@ class PublicOrderPaymentController extends Controller
 
         return Order::query()
             ->where('tracking_token_hash', hash('sha256', $token))
-            ->with(['customer', 'branch'])
+            ->with(['customer', 'branch.restaurant'])
             ->firstOrFail();
-    }
-
-    private function hasGatewayCredentials(string $provider, array $settings): bool
-    {
-            return $provider === 'flutterwave'
-                ? !empty($settings['secret_key']) && !empty($settings['base_url'])
-            : !empty($settings['consumer_key']) && !empty($settings['consumer_secret']) && !empty($settings['notification_id']) && !empty($settings['base_url']);
     }
 
     private function isTrustedRedirect(string $provider, mixed $url, array $settings): bool

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Services\Orders\OrderNumberGenerator;
 use App\Http\Controllers\Concerns\ScopesToUserBranches;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
@@ -110,7 +111,7 @@ class PosController extends Controller
                 'branch_id' => $data['branch_id'],
                 'customer_id' => $customer?->id,
                 'waiter_id' => $user->id,
-                'order_number' => 'ORD-' . Str::upper((string) Str::uuid()),
+                'order_number' => app(OrderNumberGenerator::class)->next('POS'),
                 'order_type' => $data['order_type'],
                 'status' => 'confirmed',
                 'subtotal' => $subtotal,

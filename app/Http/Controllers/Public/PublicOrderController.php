@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Services\Orders\OrderNumberGenerator;
+use App\Services\Payments\GatewaySettings;
 use App\Http\Controllers\Controller;
 use App\Mail\PublicOrderConfirmation;
 use App\Models\Branch;
@@ -37,7 +39,7 @@ class PublicOrderController extends Controller
             ? (clone $activeBranches)->value('id')
             : null;
 
-        $paymentGateways = array_keys($this->enabledGateways());
+        $paymentGateways = array_keys($this->enabledGateways($restaurant));
         $paymentOption = $request->input('payment_option');
 
         $validated = $request->validate([
@@ -93,7 +95,7 @@ class PublicOrderController extends Controller
             $order = Order::create([
                 'branch_id' => $branchId,
                 'customer_id' => $customer->id,
-                'order_number' => 'WEB-' . Str::upper((string) Str::uuid()),
+                'order_number' => app(OrderNumberGenerator::class)->next('WEB'),
                 'order_type' => 'online',
                 'payment_preference' => $validated['payment_option'],
                 'status' => 'pending',
@@ -140,7 +142,7 @@ class PublicOrderController extends Controller
     public function success(Request $request, string $order): Response
     {
         $record = $this->findPublicOrder($order);
-        $gateways = $this->enabledGateways();
+        $gateways = $this->enabledGateways($record->branch?->restaurant);
         $startPaymentGateway = $request->session()->pull('start_payment_gateway');
         if (!is_string($startPaymentGateway)
             || $startPaymentGateway !== $record->payment_preference
@@ -160,10 +162,12 @@ class PublicOrderController extends Controller
 
     public function track(string $order): Response
     {
+        $record = $this->findPublicOrder($order);
+
         return response()->view('public.orders.track', [
-            'order' => $this->findPublicOrder($order),
+            'order' => $record,
             'trackingToken' => $order,
-            'gateways' => $this->enabledGateways(),
+            'gateways' => $this->enabledGateways($record->branch?->restaurant),
         ])
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Referrer-Policy', 'no-referrer');
@@ -179,17 +183,12 @@ class PublicOrderController extends Controller
             ->firstOrFail();
     }
 
-    private function enabledGateways(): array
+    /** Online gateways ready for this restaurant (admin settings, else .env). */
+    private function enabledGateways(?\App\Models\Restaurant $restaurant): array
     {
-        return collect(config('restaurant.gateways', []))
-            ->filter(fn (array $gateway, string $name): bool =>
-                ($gateway['enabled'] ?? false)
-                && !empty($gateway['base_url'])
-                && ($name === 'flutterwave'
-                    ? !empty($gateway['secret_key'])
-                    : !empty($gateway['consumer_key']) && !empty($gateway['consumer_secret']) && !empty($gateway['notification_id']))
-            )
-            ->map(fn (array $gateway, string $name): string => ucfirst($name))
-            ->all();
+        $settings = app(GatewaySettings::class);
+        $settings->apply($restaurant);
+
+        return $settings->enabled();
     }
 }

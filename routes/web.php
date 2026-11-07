@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\MenuCategoryController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\InventoryController;
+use App\Http\Controllers\Admin\KitchenController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PermissionManagementController;
 use App\Http\Controllers\Admin\PosController;
@@ -172,6 +173,16 @@ Route::middleware('auth')
             '/pos/checkout',
             [PosController::class, 'checkout']
         )->name('pos.checkout');
+
+        Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
+        Route::get('/kitchen/pending', [KitchenController::class, 'pending'])->name('kitchen.pending');
+        Route::get('/kitchen/preparing', [KitchenController::class, 'preparing'])->name('kitchen.preparing');
+        Route::get('/kitchen/ready', [KitchenController::class, 'ready'])->name('kitchen.ready');
+        Route::get('/kitchen/completed', [KitchenController::class, 'completed'])->name('kitchen.completed');
+        Route::post('/kitchen/orders/{order}/advance', [KitchenController::class, 'advance'])
+            ->whereNumber('order')
+            ->middleware('throttle:120,1')
+            ->name('kitchen.advance');
 
         Route::get('/recipes', [RecipeController::class, 'index'])->name('recipes.index');
         Route::post('/recipes', [RecipeController::class, 'store'])->name('recipes.store');

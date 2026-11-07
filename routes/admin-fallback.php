@@ -25,13 +25,6 @@ $adminModuleRoutes = [
     ['admin.pos.history', 'pos/history', 'pos.history'],
     ['admin.pos.returns', 'pos/returns', 'pos.returns'],
 
-    // Kitchen
-    ['admin.kitchen.index', 'kitchen', 'kitchen.index'],
-    ['admin.kitchen.pending', 'kitchen/pending', 'kitchen.pending'],
-    ['admin.kitchen.preparing', 'kitchen/preparing', 'kitchen.preparing'],
-    ['admin.kitchen.ready', 'kitchen/ready', 'kitchen.ready'],
-    ['admin.kitchen.completed', 'kitchen/completed', 'kitchen.completed'],
-
     // Menu
     ['admin.menu-addons.index', 'menu-addons', 'menu.addons'],
     ['admin.menu-variants.index', 'menu-variants', 'menu.variants'],

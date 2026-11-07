@@ -26,6 +26,8 @@ class PermissionManagementController extends Controller
         'orders.view' => 'View orders',
         'orders.manage' => 'Manage order status',
         'orders.payments.create' => 'Record order payments',
+        'kitchen.view' => 'View kitchen display',
+        'kitchen.manage' => 'Start and mark kitchen orders ready',
         'reports.sales.export' => 'Export sales reports',
         'inventory.view' => 'View inventory',
         'inventory.manage' => 'Manage inventory items',

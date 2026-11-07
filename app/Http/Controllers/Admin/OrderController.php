@@ -63,14 +63,7 @@ class OrderController extends Controller
             return back()->with('error', 'The orders table does not contain a status column.');
         }
 
-        $transitions = [
-            'pending' => ['confirmed', 'preparing', 'cancelled'],
-            'confirmed' => ['preparing', 'cancelled'],
-            'preparing' => ['ready', 'cancelled'],
-            'ready' => ['completed', 'cancelled'],
-            'completed' => [], 'cancelled' => [],
-        ];
-        abort_unless(in_array($validated['status'], $transitions[$order->status] ?? [], true), 422, 'Invalid order status transition.');
+        abort_unless($order->canTransitionTo($validated['status']), 422, 'Invalid order status transition.');
         $order->status = $validated['status'];
         $order->save();
 

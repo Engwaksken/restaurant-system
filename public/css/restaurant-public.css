@@ -483,7 +483,6 @@ a:hover { color: var(--brand); }
 }
 
 .cta-band h2 { color: inherit; font-weight: 800; }
-.cta-band::after { content: ""; position: absolute; right: -80px; top: -80px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255, 255, 255, .12); }
 .cta-band > * { position: relative; z-index: 1; }
 
 .site-footer { padding: 64px 0 28px; background: var(--brand-accent); color: rgba(255, 255, 255, .7); }

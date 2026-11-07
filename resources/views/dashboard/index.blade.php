@@ -27,7 +27,7 @@
 <div class="welcome-banner mb-4">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-            <h2>{{ $greeting }}{{ $firstName ? ', ' . $firstName : '' }} 👋</h2>
+            <h2><i class="fas {{ $hour < 17 ? 'fa-sun' : 'fa-moon' }} me-2 opacity-75"></i>{{ $greeting }}{{ $firstName ? ', ' . $firstName : '' }}</h2>
             <p>Here is what is happening at {{ $brand->name() }} today.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
@@ -41,7 +41,8 @@
     [
         'label' => 'Today\'s sales', 'icon' => 'fas fa-sack-dollar', 'tone' => 'brand',
         'value' => $currency . ' ' . number_format($stats['sales']),
-        'hint' => $change === null ? 'Excludes cancelled orders' : (($change >= 0 ? '▲ ' : '▼ ') . abs($change) . '% vs yesterday'),
+        'hint' => $change === null ? 'Cancelled orders not counted' : (abs($change) . '% ' . ($change >= 0 ? 'more' : 'less') . ' than yesterday'),
+        'trend' => $change === null ? null : ($change >= 0 ? 'up' : 'down'),
         'href' => route('admin.orders.index'),
     ],
     [

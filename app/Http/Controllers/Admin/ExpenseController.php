@@ -43,7 +43,7 @@ class ExpenseController extends Controller
         $currency = config('restaurant.currency');
         $pageStats = [
             ['label' => 'This month', 'value' => $currency . ' ' . number_format($total, 2), 'icon' => 'fas fa-wallet', 'tone' => 'brand', 'hint' => now()->format('F Y')],
-            ['label' => 'Last month', 'value' => $currency . ' ' . number_format($lastMonth, 2), 'icon' => 'fas fa-calendar-minus', 'tone' => 'neutral', 'hint' => $lastMonth > 0 ? (($total >= $lastMonth ? '▲ ' : '▼ ') . number_format(abs(($total - $lastMonth) / $lastMonth * 100), 1) . '% month on month') : 'No spend recorded'],
+            ['label' => 'Last month', 'value' => $currency . ' ' . number_format($lastMonth, 2), 'icon' => 'fas fa-calendar-minus', 'tone' => 'neutral', 'hint' => $lastMonth > 0 ? ('This month is ' . number_format(abs(($total - $lastMonth) / $lastMonth * 100), 1) . '% ' . ($total >= $lastMonth ? 'higher' : 'lower')) : 'Nothing recorded last month', 'trend' => $lastMonth > 0 ? ($total >= $lastMonth ? 'up' : 'down') : null],
             ['label' => 'Today', 'value' => $currency . ' ' . number_format($today, 2), 'icon' => 'fas fa-calendar-day', 'tone' => 'info'],
             ['label' => 'Records', 'value' => number_format($expenses->total()), 'icon' => 'fas fa-list', 'tone' => 'violet', 'hint' => $categories->count() . ' categories'],
         ];

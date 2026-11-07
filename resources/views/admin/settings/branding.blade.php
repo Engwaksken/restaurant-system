@@ -27,9 +27,42 @@
     <div class="row g-4">
         <div class="col-xl-8">
 
-            {{-- Identity --}}
-            <div class="panel p-4 mb-4">
-                <div class="panel-section-title mb-3"><i class="fas fa-store me-2"></i>Identity</div>
+            <div class="panel p-0 mb-4">
+                <ul class="nav nav-tabs settings-tabs px-3 pt-2" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-identity" data-bs-toggle="tab" data-bs-target="#pane-identity" type="button" role="tab" aria-controls="pane-identity" aria-selected="true" data-fields="name,tagline,about">
+                            <i class="fas fa-store me-2"></i>Identity<span class="tab-error-dot d-none" aria-hidden="true"></span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-imagery" data-bs-toggle="tab" data-bs-target="#pane-imagery" type="button" role="tab" aria-controls="pane-imagery" aria-selected="false" data-fields="logo,favicon,hero_image">
+                            <i class="fas fa-images me-2"></i>Logo & images<span class="tab-error-dot d-none" aria-hidden="true"></span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-colours" data-bs-toggle="tab" data-bs-target="#pane-colours" type="button" role="tab" aria-controls="pane-colours" aria-selected="false" data-fields="primary_color,accent_color">
+                            <i class="fas fa-palette me-2"></i>Colours<span class="tab-error-dot d-none" aria-hidden="true"></span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-contact" data-bs-toggle="tab" data-bs-target="#pane-contact" type="button" role="tab" aria-controls="pane-contact" aria-selected="false" data-fields="phone,email,address,opening_hours">
+                            <i class="fas fa-address-book me-2"></i>Contact & hours<span class="tab-error-dot d-none" aria-hidden="true"></span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-social" data-bs-toggle="tab" data-bs-target="#pane-social" type="button" role="tab" aria-controls="pane-social" aria-selected="false" data-fields="website_url,facebook_url,instagram_url,whatsapp_number">
+                            <i class="fas fa-share-nodes me-2"></i>Website & social<span class="tab-error-dot d-none" aria-hidden="true"></span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-email" data-bs-toggle="tab" data-bs-target="#pane-email" type="button" role="tab" aria-controls="pane-email" aria-selected="false" data-fields="email_footer">
+                            <i class="fas fa-envelope-open-text me-2"></i>Emails<span class="tab-error-dot d-none" aria-hidden="true"></span>
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="pane-identity" role="tabpanel" aria-labelledby="tab-identity" tabindex="0">
+            <div class="p-4">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label" for="name">Restaurant name <span class="text-danger">*</span></label>
@@ -48,10 +81,9 @@
                     </div>
                 </div>
             </div>
-
-            {{-- Imagery --}}
-            <div class="panel p-4 mb-4">
-                <div class="panel-section-title mb-3"><i class="fas fa-images me-2"></i>Logo &amp; imagery</div>
+                    </div>
+                    <div class="tab-pane fade" id="pane-imagery" role="tabpanel" aria-labelledby="tab-imagery" tabindex="0">
+            <div class="p-4">
                 <div class="d-grid gap-3">
                     @foreach($images as $key => $image)
                         <div class="brand-upload">
@@ -78,10 +110,9 @@
                     @endforeach
                 </div>
             </div>
-
-            {{-- Colours --}}
-            <div class="panel p-4 mb-4">
-                <div class="panel-section-title mb-3"><i class="fas fa-palette me-2"></i>Colours</div>
+                    </div>
+                    <div class="tab-pane fade" id="pane-colours" role="tabpanel" aria-labelledby="tab-colours" tabindex="0">
+            <div class="p-4">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label" for="primary_color">Primary colour <span class="text-danger">*</span></label>
@@ -111,10 +142,9 @@
                     </div>
                 </div>
             </div>
-
-            {{-- Contact --}}
-            <div class="panel p-4 mb-4">
-                <div class="panel-section-title mb-3"><i class="fas fa-address-book me-2"></i>Contact &amp; opening hours</div>
+                    </div>
+                    <div class="tab-pane fade" id="pane-contact" role="tabpanel" aria-labelledby="tab-contact" tabindex="0">
+            <div class="p-4">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label" for="phone">Phone</label>
@@ -139,10 +169,9 @@
                     </div>
                 </div>
             </div>
-
-            {{-- Social --}}
-            <div class="panel p-4 mb-4">
-                <div class="panel-section-title mb-3"><i class="fas fa-share-nodes me-2"></i>Website &amp; social</div>
+                    </div>
+                    <div class="tab-pane fade" id="pane-social" role="tabpanel" aria-labelledby="tab-social" tabindex="0">
+            <div class="p-4">
                 <div class="row g-3">
                     @foreach([
                         'website_url' => ['Website', 'fas fa-globe', 'https://yourrestaurant.com'],
@@ -161,14 +190,16 @@
                     @endforeach
                 </div>
             </div>
-
-            {{-- Email --}}
-            <div class="panel p-4 mb-4">
-                <div class="panel-section-title mb-3"><i class="fas fa-envelope-open-text me-2"></i>Emails &amp; notifications</div>
+                    </div>
+                    <div class="tab-pane fade" id="pane-email" role="tabpanel" aria-labelledby="tab-email" tabindex="0">
+            <div class="p-4">
                 <label class="form-label" for="email_footer">Email footer message</label>
                 <textarea class="form-control @error('email_footer') is-invalid @enderror" id="email_footer" name="email_footer" rows="3" maxlength="1000" placeholder="e.g. Thank you for dining with us! Follow us on Instagram for weekly specials.">{{ $field('email_footer') }}</textarea>
                 @error('email_footer')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 <div class="form-text">Every customer email uses your logo, colours and contact details, and ends with this message.</div>
+            </div>
+                    </div>
+                </div>
             </div>
 
             <div class="d-flex justify-content-end gap-2">
@@ -219,6 +250,23 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Remember the open tab, and jump to the first tab that has a validation error.
+    const tabs = [...document.querySelectorAll('.settings-tabs [data-fields]')];
+    const errors = @json(array_keys($errors->getMessages()));
+    let target = null;
+    tabs.forEach(function (tab) {
+        const hasError = tab.dataset.fields.split(',').some(field => errors.includes(field));
+        tab.querySelector('.tab-error-dot').classList.toggle('d-none', !hasError);
+        if (hasError && !target) { target = tab; }
+        tab.addEventListener('shown.bs.tab', function () {
+            try { sessionStorage.setItem('brandingTab', tab.id); } catch (e) {}
+        });
+    });
+    if (!target) {
+        try { target = document.getElementById(sessionStorage.getItem('brandingTab') || ''); } catch (e) {}
+    }
+    if (target) { bootstrap.Tab.getOrCreateInstance(target).show(); }
+
     const preview = document.getElementById('brandPreview');
     const hexPattern = /^#[0-9a-fA-F]{6}$/;
 

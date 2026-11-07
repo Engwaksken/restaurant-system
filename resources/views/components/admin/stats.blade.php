@@ -15,6 +15,7 @@
                     :icon="$item['icon'] ?? 'fas fa-chart-simple'"
                     :tone="$item['tone'] ?? 'brand'"
                     :hint="$item['hint'] ?? null"
+                    :trend="$item['trend'] ?? null"
                     :href="$item['href'] ?? null" />
             </div>
         @endforeach

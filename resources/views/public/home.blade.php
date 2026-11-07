@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{{ config('app.name', 'Restaurant Management System') }}</title>
+    <title>{{ $restaurant->name ?? config('app.name', 'Restaurant') }}</title>
 
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
@@ -20,9 +20,24 @@
             background: #f8f9fa;
         }
 
+        .site-header {
+            z-index: 1030;
+        }
+
         .hero {
-            padding: 80px 0;
-            background: #ffffff;
+            background: linear-gradient(135deg, #212529 0%, #495057 100%);
+            color: #fff;
+            padding: 72px 0;
+        }
+
+        .hero .text-muted {
+            color: #dee2e6 !important;
+        }
+
+        .hero-visual {
+            font-size: 9rem;
+            color: rgba(255, 255, 255, .12);
+            text-align: center;
         }
 
         .menu-card {
@@ -83,32 +98,77 @@
 
 <body>
 
-<nav class="navbar navbar-expand-lg bg-white shadow-sm sticky-top">
-    <div class="container">
+<header class="site-header sticky-top bg-white shadow-sm">
+    <div class="container d-flex align-items-center gap-3 py-2">
 
-        <a class="navbar-brand fw-bold" href="{{ route('home') }}">
-            {{ config('app.name', 'Restaurant') }}
+        <a class="d-flex align-items-center gap-2 text-dark text-decoration-none fw-bold fs-5" href="{{ route('home') }}">
+            @if(!empty($restaurant->logo_path))
+                <img src="{{ asset('storage/' . $restaurant->logo_path) }}" alt="" height="36" class="rounded">
+            @else
+                <i class="fas fa-utensils text-primary"></i>
+            @endif
+            <span>{{ $restaurant->name }}</span>
         </a>
 
+        <button
+            type="button"
+            class="btn btn-dark position-relative ms-auto d-flex align-items-center gap-2"
+            data-bs-toggle="modal"
+            data-bs-target="#cartModal"
+            aria-label="Open cart"
+        >
+            <i class="fas fa-cart-shopping"></i>
+            <span class="d-none d-sm-inline">Cart</span>
+            <span class="badge bg-warning text-dark" id="cartCount">0</span>
+            <span class="small d-none d-md-inline">{{ $restaurant->currency }} <span id="headerSubtotal">0.00</span></span>
+        </button>
+
     </div>
-</nav>
+</header>
 
 
 <section class="hero">
-    <div class="container text-center">
+    <div class="container">
+        <div class="row align-items-center g-4">
 
-        <h1 class="display-5 fw-bold">
-            Welcome to Our Restaurant
-        </h1>
+            <div class="col-lg-7">
+                <h1 class="display-5 fw-bold">{{ $restaurant->name }}</h1>
 
-        <p class="lead text-muted">
-            Browse our menu and place your order online.
-        </p>
+                <p class="lead text-muted mb-3">
+                    Order online and pick up or get it delivered.
+                </p>
 
-        <a href="#menu" class="btn btn-primary btn-lg">
-            Order Now
-        </a>
+                <ul class="list-unstyled text-muted mb-4">
+                    @if(!empty($restaurant->address))
+                        <li class="mb-1"><i class="fas fa-location-dot me-2"></i>{{ $restaurant->address }}</li>
+                    @endif
+                    @if(!empty($restaurant->phone))
+                        <li><i class="fas fa-phone me-2"></i>{{ $restaurant->phone }}</li>
+                    @endif
+                </ul>
 
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="#menu" class="btn btn-primary btn-lg">
+                        <i class="fas fa-bowl-food me-2"></i>Browse menu
+                    </a>
+                    <button
+                        type="button"
+                        class="btn btn-outline-light btn-lg"
+                        data-bs-toggle="modal"
+                        data-bs-target="#cartModal"
+                    >
+                        <i class="fas fa-cart-shopping me-2"></i>View cart
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-lg-5 d-none d-lg-block">
+                <div class="hero-visual">
+                    <i class="fas fa-utensils"></i>
+                </div>
+            </div>
+
+        </div>
     </div>
 </section>
 
@@ -292,40 +352,54 @@
             </div>
         @endforeach
 
-        <div class="card border-0 shadow-sm mt-5" id="checkout">
-            <div class="card-body p-4">
-                <h2 class="h4">Your order</h2>
-                <div id="cartEmpty" class="text-muted">Add menu items to start an order.</div>
+    </div>
+
+</section>
+
+
+<div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <form id="checkoutForm" method="POST" action="{{ route('order.store') }}" class="modal-content">
+            @csrf
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="cartModalLabel">Your order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div id="cartEmpty" class="text-muted mb-3">Add menu items to start an order.</div>
                 <ul id="cartItems" class="list-group list-group-flush mb-3"></ul>
-                <div class="fw-bold mb-4">Estimated subtotal: <span id="cartSubtotal">0.00</span></div>
+                <div class="fw-bold mb-4">Estimated subtotal: {{ $restaurant->currency }} <span id="cartSubtotal">0.00</span></div>
 
                 @if($errors->any())
                     <div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
                 @endif
 
-                <form id="checkoutForm" method="POST" action="{{ route('order.store') }}">
-                    @csrf
-                    <div id="cartPayload"></div>
-                    <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label" for="customerName">Name</label><input class="form-control" id="customerName" name="name" value="{{ old('name') }}" required maxlength="255"></div>
-                        <div class="col-md-6"><label class="form-label" for="customerPhone">Phone</label><input class="form-control" id="customerPhone" name="phone" value="{{ old('phone') }}" required maxlength="40"></div>
-                        <div class="col-md-6"><label class="form-label" for="customerEmail">Email (optional)</label><input class="form-control" id="customerEmail" type="email" name="email" value="{{ old('email') }}" maxlength="255"></div>
-                        <div class="col-md-6"><label class="form-label" for="customerAddress">Delivery address (optional)</label><input class="form-control" id="customerAddress" name="address" value="{{ old('address') }}" maxlength="1000"></div>
-                        @if($branches->count() > 1)
-                            <div class="col-md-6"><label class="form-label" for="orderBranch">Branch</label><select class="form-select" id="orderBranch" name="branch_id" required>@foreach($branches as $branch)<option value="{{ $branch->id }}">{{ $branch->name }}</option>@endforeach</select></div>
-                        @elseif($branches->count() === 1)
-                            <input type="hidden" name="branch_id" value="{{ $branches->first()->id }}">
-                        @endif
-                        <div class="col-12"><label class="form-label" for="orderNotes">Notes (optional)</label><textarea class="form-control" id="orderNotes" name="notes" maxlength="1000">{{ old('notes') }}</textarea></div>
-                        <div class="col-12"><button class="btn btn-success btn-lg" id="submitOrder" type="submit" disabled>Place order</button></div>
-                    </div>
-                </form>
+                <div id="cartPayload"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label" for="customerName">Name</label><input class="form-control" id="customerName" name="name" value="{{ old('name') }}" required maxlength="255"></div>
+                    <div class="col-md-6"><label class="form-label" for="customerPhone">Phone</label><input class="form-control" id="customerPhone" name="phone" value="{{ old('phone') }}" required maxlength="40"></div>
+                    <div class="col-md-6"><label class="form-label" for="customerEmail">Email (optional)</label><input class="form-control" id="customerEmail" type="email" name="email" value="{{ old('email') }}" maxlength="255"></div>
+                    <div class="col-md-6"><label class="form-label" for="customerAddress">Delivery address (optional)</label><input class="form-control" id="customerAddress" name="address" value="{{ old('address') }}" maxlength="1000"></div>
+                    @if($branches->count() > 1)
+                        <div class="col-md-6"><label class="form-label" for="orderBranch">Branch</label><select class="form-select" id="orderBranch" name="branch_id" required>@foreach($branches as $branch)<option value="{{ $branch->id }}">{{ $branch->name }}</option>@endforeach</select></div>
+                    @elseif($branches->count() === 1)
+                        <input type="hidden" name="branch_id" value="{{ $branches->first()->id }}">
+                    @endif
+                    <div class="col-12"><label class="form-label" for="orderNotes">Notes (optional)</label><textarea class="form-control" id="orderNotes" name="notes" maxlength="1000">{{ old('notes') }}</textarea></div>
+                </div>
             </div>
-        </div>
 
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Continue shopping</button>
+                <button class="btn btn-success" id="submitOrder" type="submit" disabled>Place order</button>
+            </div>
+
+        </form>
     </div>
-
-</section>
+</div>
 
 
 <button
@@ -356,12 +430,12 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body d-grid gap-2">
-                <button type="button" class="btn btn-outline-secondary" data-a11y-font="1">Increase text</button>
-                <button type="button" class="btn btn-outline-secondary" data-a11y-font="-1">Decrease text</button>
-                <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="high-contrast">High contrast</button>
-                <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="grayscale">Grayscale</button>
-                <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="reduce-motion">Reduce motion</button>
-                <button type="button" class="btn btn-outline-danger" data-a11y-reset>Reset</button>
+        <button type="button" class="btn btn-outline-secondary" data-a11y-font="1">Increase text</button>
+        <button type="button" class="btn btn-outline-secondary" data-a11y-font="-1">Decrease text</button>
+        <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="high-contrast">High contrast</button>
+        <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="grayscale">Grayscale</button>
+        <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="reduce-motion">Reduce motion</button>
+        <button type="button" class="btn btn-outline-danger" data-a11y-reset>Reset</button>
     </div>
 </div>
 
@@ -393,11 +467,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const cartEmpty = document.getElementById('cartEmpty');
     const cartPayload = document.getElementById('cartPayload');
     const submitOrder = document.getElementById('submitOrder');
+    const cartCount = document.getElementById('cartCount');
+    const headerSubtotal = document.getElementById('headerSubtotal');
 
     function renderCart() {
         cartList.replaceChildren();
         cartPayload.replaceChildren();
         let subtotal = 0;
+        let count = 0;
         let index = 0;
 
         const addHidden = (name, value) => {
@@ -410,16 +487,41 @@ document.addEventListener('DOMContentLoaded', function () {
 
         cartItems.forEach((line, key) => {
             subtotal += line.price * line.quantity;
+            count += line.quantity;
+
             const row = document.createElement('li');
-            row.className = 'list-group-item d-flex justify-content-between align-items-center';
+            row.className = 'list-group-item d-flex justify-content-between align-items-center gap-2';
+
             const text = document.createElement('span');
-            text.textContent = `${line.name} × ${line.quantity}`;
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.className = 'btn btn-sm btn-outline-danger';
-            remove.textContent = 'Remove';
-            remove.addEventListener('click', () => { cartItems.delete(key); renderCart(); });
-            row.append(text, remove);
+            text.textContent = `${line.name} — ${(line.price * line.quantity).toFixed(2)}`;
+
+            const controls = document.createElement('div');
+            controls.className = 'd-flex align-items-center gap-2';
+
+            const minus = document.createElement('button');
+            minus.type = 'button';
+            minus.className = 'btn btn-sm btn-outline-secondary';
+            minus.setAttribute('aria-label', 'Decrease quantity');
+            minus.innerHTML = '<i class="fas fa-minus"></i>';
+            minus.addEventListener('click', () => {
+                line.quantity--;
+                if (line.quantity <= 0) { cartItems.delete(key); }
+                renderCart();
+            });
+
+            const qty = document.createElement('span');
+            qty.className = 'fw-semibold';
+            qty.textContent = line.quantity;
+
+            const plus = document.createElement('button');
+            plus.type = 'button';
+            plus.className = 'btn btn-sm btn-outline-secondary';
+            plus.setAttribute('aria-label', 'Increase quantity');
+            plus.innerHTML = '<i class="fas fa-plus"></i>';
+            plus.addEventListener('click', () => { line.quantity++; renderCart(); });
+
+            controls.append(minus, qty, plus);
+            row.append(text, controls);
             cartList.append(row);
 
             addHidden(`items[${index}][menu_item_id]`, line.id);
@@ -431,6 +533,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         cartEmpty.hidden = cartItems.size > 0;
         document.getElementById('cartSubtotal').textContent = subtotal.toFixed(2);
+        headerSubtotal.textContent = subtotal.toFixed(2);
+        cartCount.textContent = count;
         submitOrder.disabled = cartItems.size === 0;
     }
 
@@ -499,9 +603,14 @@ document.addEventListener('DOMContentLoaded', function () {
             renderCart();
             const modal = button.closest('.modal');
             if (modal) { bootstrap.Modal.getInstance(modal)?.hide(); }
-            document.getElementById('checkout').scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
+
+    renderCart();
+
+    @if($errors->any())
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('cartModal')).show();
+    @endif
 
 });
 </script>

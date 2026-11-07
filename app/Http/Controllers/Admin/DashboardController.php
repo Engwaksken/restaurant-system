@@ -8,14 +8,25 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(): View|Response
     {
         $user = auth()->user();
-        abort_unless($user && $user->restaurant_id, 403);
-        abort_unless($user->can('admin.dashboard.view') || $user->can('admin'), 403);
+
+        if (!$user || !$user->restaurant_id) {
+            return response()->view('admin.access-denied', [
+                'message' => 'Your account is not assigned to a restaurant yet. Ask an administrator to assign you.',
+            ], 403);
+        }
+
+        if (!($user->can('admin.dashboard.view') || $user->can('admin'))) {
+            return response()->view('admin.access-denied', [
+                'message' => 'Your account does not have permission to view the dashboard. Ask an administrator to grant it.',
+            ], 403);
+        }
 
         $branchScope = fn ($query) => $query->whereHas('branch', function ($branches) use ($user): void {
             $branches->where('restaurant_id', $user->restaurant_id);

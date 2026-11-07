@@ -462,86 +462,67 @@ code { color: var(--brand-dark); background: rgba(var(--brand-rgb), .08); paddin
 
 /* =========================================================
    STAT CARDS
+   Calm, readable cards: label and icon on top, the number,
+   then a short plain-language note.
 ========================================================= */
 .stat-grid { margin-bottom: 20px; }
 
 .stat-card {
-    position: relative;
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
+    flex-direction: column;
+    gap: 6px;
     height: 100%;
-    padding: 18px;
-    overflow: hidden;
+    padding: 18px 20px;
     border: 1px solid var(--border) !important;
     border-radius: var(--radius);
     background: var(--surface);
     box-shadow: var(--shadow-xs);
     color: var(--text);
     text-align: left;
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    transition: box-shadow .18s ease, border-color .18s ease;
 }
 
 a.stat-card:hover, button.stat-card:hover {
-    transform: translateY(-2px);
     border-color: rgba(var(--brand-rgb), .35) !important;
     box-shadow: var(--shadow-md);
     color: var(--text);
 }
 
-.stat-card::after {
-    content: "";
-    position: absolute;
-    right: -30px;
-    top: -30px;
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
-    background: var(--stat-tone-bg, rgba(var(--brand-rgb), .08));
-    opacity: .6;
-    pointer-events: none;
-}
+.stat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.stat-label { color: var(--text-soft); font-size: 13px; font-weight: 500; line-height: 1.3; }
 
 .stat-icon,
 .menu-stat-icon {
-    display: flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    flex: 0 0 44px;
-    border-radius: 12px;
-    font-size: 17px;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 10px;
+    font-size: 16px;
+    line-height: 1;
 }
 
-.stat-icon {
-    background: var(--stat-tone-bg, rgba(var(--brand-rgb), .1));
-    color: var(--stat-tone, var(--brand));
-}
+.stat-icon { background: var(--stat-tone-bg, rgba(var(--brand-rgb), .1)); color: var(--stat-tone, var(--brand)); }
+.stat-icon i, .menu-stat-icon i { display: block; width: 1em; line-height: 1; text-align: center; }
 
-.stat-body { min-width: 0; position: relative; z-index: 1; }
-
-.stat-label,
-.stat-card > span:first-child {
-    display: block;
-    color: var(--muted);
-    font-size: 12.5px;
-    font-weight: 500;
-}
-
-.stat-value,
-.stat-card > strong {
-    display: block;
-    margin-top: 4px;
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1.15;
-    letter-spacing: -.02em;
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -.01em;
     font-variant-numeric: tabular-nums;
     word-break: break-word;
 }
 
-.stat-hint { display: block; margin-top: 4px; color: var(--muted); font-size: 11.5px; }
+.stat-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+.stat-hint { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.stat-hint.trend-up { color: #047857; }
+.stat-hint.trend-down { color: #b91c1c; }
+.stat-link { color: var(--muted); font-size: 12px; transition: transform .15s ease, color .15s ease; }
+a.stat-card:hover .stat-link { color: var(--brand); transform: translateX(3px); }
 
 .tone-brand   { --stat-tone: var(--brand); --stat-tone-bg: rgba(var(--brand-rgb), .10); }
 .tone-success { --stat-tone: #059669; --stat-tone-bg: rgba(5, 150, 105, .10); }
@@ -560,24 +541,13 @@ a.stat-card:hover, button.stat-card:hover {
     overflow: hidden;
     padding: 26px 28px;
     border-radius: var(--radius-lg);
-    background: linear-gradient(120deg, var(--brand-accent) 0%, var(--brand-accent-light) 55%, rgba(var(--brand-rgb), .85) 140%);
+    background: var(--brand-accent);
     color: var(--brand-accent-contrast);
     box-shadow: var(--shadow-md);
 }
 
 .welcome-banner h2 { color: inherit; font-size: 24px; margin: 0 0 6px; }
 .welcome-banner p { margin: 0; opacity: .78; }
-
-.welcome-banner::after {
-    content: "";
-    position: absolute;
-    right: -60px;
-    bottom: -90px;
-    width: 280px;
-    height: 280px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(var(--brand-rgb), .55), transparent 70%);
-}
 
 .welcome-banner > * { position: relative; z-index: 1; }
 
@@ -597,8 +567,9 @@ a.stat-card:hover, button.stat-card:hover {
 }
 
 .quick-action i {
-    display: grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 38px;
     height: 38px;
     border-radius: 10px;
@@ -831,8 +802,9 @@ nav[role="navigation"] p.small { margin: 0; color: var(--muted); }
 .empty-state { padding: 44px 16px; text-align: center; color: var(--muted); }
 
 .empty-state-icon {
-    display: inline-grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 60px;
     height: 60px;
     margin-bottom: 12px;
@@ -930,6 +902,14 @@ nav[role="navigation"] p.small { margin: 0; color: var(--muted); }
 
 .dropdown-menu { border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); font-size: 13.5px; }
 .dropdown-item.active, .dropdown-item:active { background: var(--brand); color: var(--brand-contrast); }
+
+/* Settings tabs: one section at a time instead of a long scroll. */
+.settings-tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; gap: 4px; }
+.settings-tabs::-webkit-scrollbar { display: none; }
+.settings-tabs .nav-link { position: relative; padding: 12px 14px; white-space: nowrap; font-size: 13.5px; }
+.settings-tabs .nav-link i { opacity: .7; }
+.settings-tabs .nav-link.active i { opacity: 1; color: var(--brand); }
+.tab-error-dot { position: absolute; top: 9px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: #dc2626; }
 
 /* =========================================================
    BRANDING SETTINGS
@@ -1110,9 +1090,9 @@ nav[role="navigation"] p.small { margin: 0; color: var(--muted); }
 }
 
 @media (max-width: 575.98px) {
-    .stat-card { padding: 14px; gap: 10px; }
-    .stat-icon { width: 38px; height: 38px; flex-basis: 38px; font-size: 15px; }
-    .stat-value, .stat-card > strong { font-size: 18px; }
+    .stat-card { padding: 14px; }
+    .stat-icon { width: 34px; height: 34px; flex-basis: 34px; font-size: 14px; }
+    .stat-value { font-size: 19px; }
     .page-head h2 { font-size: 19px; }
 
     .modal-dialog, .modal-dialog.modal-lg { width: calc(100% - 20px); max-width: calc(100% - 20px); margin: 10px auto; }

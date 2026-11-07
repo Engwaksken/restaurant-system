@@ -31,67 +31,12 @@
     @endif
 
     {{-- Summary --}}
-    <div class="row g-3 mb-3">
-
-        <div class="col-6 col-xl-3">
-            <div class="card menu-stat-card h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <div class="menu-stat-icon bg-primary-subtle text-primary">
-                        <i class="fas fa-burger"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Menu Items</small>
-                        <strong>
-                            {{ method_exists($items, 'total') ? number_format($items->total()) : number_format($items->count()) }}
-                        </strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-6 col-xl-3">
-            <div class="card menu-stat-card h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <div class="menu-stat-icon bg-success-subtle text-success">
-                        <i class="fas fa-circle-check"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Available</small>
-                        <strong>{{ $items->where('is_available', true)->count() }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-6 col-xl-3">
-            <div class="card menu-stat-card h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <div class="menu-stat-icon bg-secondary-subtle text-secondary">
-                        <i class="fas fa-circle-pause"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Unavailable</small>
-                        <strong>{{ $items->where('is_available', false)->count() }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-6 col-xl-3">
-            <div class="card menu-stat-card h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <div class="menu-stat-icon bg-info-subtle text-info">
-                        <i class="fas fa-layer-group"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Categories</small>
-                        <strong>{{ number_format($categories->count()) }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
+    <x-admin.stats :items="[
+        ['label' => 'Menu items', 'value' => method_exists($items, 'total') ? number_format($items->total()) : number_format($items->count()), 'icon' => 'fas fa-burger', 'tone' => 'brand'],
+        ['label' => 'Available on this page', 'value' => number_format($items->where('is_available', true)->count()), 'icon' => 'fas fa-circle-check', 'tone' => 'success', 'hint' => 'Ready to order'],
+        ['label' => 'Unavailable on this page', 'value' => number_format($items->where('is_available', false)->count()), 'icon' => 'fas fa-circle-pause', 'tone' => 'neutral', 'hint' => 'Hidden from ordering'],
+        ['label' => 'Categories', 'value' => number_format($categories->count()), 'icon' => 'fas fa-layer-group', 'tone' => 'info', 'href' => route('admin.menu-categories.index')],
+    ]" />
 
     {{-- Main Panel --}}
     <div class="card border-0 shadow-sm">

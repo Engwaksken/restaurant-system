@@ -1,15 +1,12 @@
+@php($brand = \App\Support\Brand::for($order->branch?->restaurant))
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="referrer" content="no-referrer">
-    <title>Order placed · {{ $order->branch?->restaurant?->name ?? 'Restaurant' }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
     @include('public.orders.partials.styles')
+    <meta name="referrer" content="no-referrer">
+    <title>Order placed · {{ $brand->name() }}</title>
 </head>
-<body>
+<body class="order-hero">
 
 @include('public.orders.partials.brand')
 
@@ -24,12 +21,34 @@
             <i class="fas fa-circle-check"></i>
         </div>
         <h1 class="h3 fw-bold mb-2">Thank you! Your order is placed</h1>
+        <p class="text-muted mb-1">{{ $brand->name() }} has received your order and will start preparing it shortly.</p>
         <p class="text-muted mb-4">Keep your order number to track it at any time.</p>
-        <div class="d-inline-flex align-items-center gap-2 border rounded-pill px-3 py-2">
+        <div class="order-number-chip mx-auto">
             <span class="small text-muted">Order number</span>
             <strong>{{ $order->order_number }}</strong>
         </div>
     </section>
+
+    @if($startPaymentGateway && (float) $order->balance > 0 && filter_var($order->customer?->email, FILTER_VALIDATE_EMAIL))
+        <section class="card order-card p-3 mb-4">
+            <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+                <div>
+                    <div class="fw-semibold">Continue to secure payment</div>
+                    <div class="small text-muted">Your order is placed. Complete payment with {{ $gateways[$startPaymentGateway] }} to confirm it.</div>
+                </div>
+                <form id="startOnlinePayment" method="POST" action="{{ route('order.pay', $trackingToken) }}">
+                    @csrf
+                    <input type="hidden" name="gateway" value="{{ $startPaymentGateway }}">
+                    <button class="btn btn-success text-nowrap" type="submit">Continue to payment</button>
+                </form>
+            </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    document.getElementById('startOnlinePayment')?.requestSubmit();
+                });
+            </script>
+        </section>
+    @endif
 
     @if($order->status === 'cancelled')
         <div class="alert alert-danger d-flex align-items-center gap-2 mb-4">
@@ -52,7 +71,7 @@
                     @foreach($order->items as $item)
                         <li class="d-flex justify-content-between gap-3 py-2 border-bottom small">
                             <span>{{ $item->quantity }} × {{ $item->item_name }}</span>
-                            <span class="text-nowrap">{{ config('restaurant.currency') }} {{ number_format((float) $item->total, 2) }}</span>
+                            <span class="text-nowrap">{{ $brand->currency() }} {{ number_format((float) $item->total, 2) }}</span>
                         </li>
                     @endforeach
                 </ul>
@@ -68,26 +87,30 @@
 
                 <div class="d-flex justify-content-between small mb-1">
                     <span class="text-muted">Subtotal</span>
-                    <span>{{ config('restaurant.currency') }} {{ number_format((float) $order->subtotal, 2) }}</span>
+                    <span>{{ $brand->currency() }} {{ number_format((float) $order->subtotal, 2) }}</span>
                 </div>
                 <div class="d-flex justify-content-between small mb-1">
                     <span class="text-muted">Tax</span>
-                    <span>{{ config('restaurant.currency') }} {{ number_format((float) $order->tax, 2) }}</span>
+                    <span>{{ $brand->currency() }} {{ number_format((float) $order->tax, 2) }}</span>
+                </div>
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">Payment method</span>
+                    <span>{{ $order->payment_preference === 'cash_on_delivery' ? 'Pay on delivery or pickup' : ucfirst((string) $order->payment_preference) }}</span>
                 </div>
                 @if((float) $order->delivery_fee > 0)
                     <div class="d-flex justify-content-between small mb-1">
                         <span class="text-muted">Delivery</span>
-                        <span>{{ config('restaurant.currency') }} {{ number_format((float) $order->delivery_fee, 2) }}</span>
+                        <span>{{ $brand->currency() }} {{ number_format((float) $order->delivery_fee, 2) }}</span>
                     </div>
                 @endif
                 <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-2">
                     <span>Total</span>
-                    <span>{{ config('restaurant.currency') }} {{ number_format((float) $order->total, 2) }}</span>
+                    <span>{{ $brand->currency() }} {{ number_format((float) $order->total, 2) }}</span>
                 </div>
                 <div class="d-flex justify-content-between small mt-2">
                     <span class="text-muted">Amount due</span>
                     <span class="fw-semibold {{ (float) $order->balance > 0 ? 'text-danger' : 'text-success' }}">
-                        {{ config('restaurant.currency') }} {{ number_format((float) $order->balance, 2) }}
+                        {{ $brand->currency() }} {{ number_format((float) $order->balance, 2) }}
                     </span>
                 </div>
 

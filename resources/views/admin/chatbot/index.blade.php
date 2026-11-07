@@ -4,6 +4,7 @@
 @section('page-title', 'Customer Conversations')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="panel p-4">
     <p class="text-muted">Read-only tenant conversation history. Replies and AI prompts are disabled pending a reviewed workflow.</p>
     <div class="table-responsive"><table class="table table-striped">

@@ -48,7 +48,18 @@ class CashRegisterController extends Controller
             ->latest('opened_at')->latest('id')
             ->paginate(25)->withQueryString();
 
+        $scope = $this->whereUserBranch(CashRegisterSession::query(), $user)
+            ->when(!$seesAll, fn ($query) => $query->where('opened_by', $user->id));
+        $currency = config('restaurant.currency');
+        $pageStats = [
+            ['label' => 'Open drawers', 'value' => number_format((clone $scope)->where('status', 'open')->count()), 'icon' => 'fas fa-cash-register', 'tone' => 'success', 'hint' => $current ? 'Including yours' : 'You have no open drawer'],
+            ['label' => 'Closed today', 'value' => number_format((clone $scope)->where('status', 'closed')->where('closed_at', '>=', now()->startOfDay())->count()), 'icon' => 'fas fa-lock', 'tone' => 'info'],
+            ['label' => 'Awaiting review', 'value' => number_format((clone $scope)->where('review_required', true)->whereNull('reviewed_at')->count()), 'icon' => 'fas fa-magnifying-glass-dollar', 'tone' => 'warning', 'hint' => 'Variance above tolerance'],
+            ['label' => 'Net variance (30 days)', 'value' => $currency . ' ' . number_format((float) (clone $scope)->where('closed_at', '>=', now()->subDays(30))->sum('variance'), 2), 'icon' => 'fas fa-scale-balanced', 'tone' => 'neutral', 'hint' => 'Counted minus expected'],
+        ];
+
         return view('admin.finance.cash-register', [
+            'pageStats' => $pageStats,
             'current' => $current,
             'expected' => $current ? $this->register->expectedCash($current) : null,
             'cashTaken' => $current ? (float) $current->payments()->where('payment_method', 'cash')->sum('amount') : 0,

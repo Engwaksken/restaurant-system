@@ -32,7 +32,18 @@ class StockTransferController extends Controller
         $items = InventoryItem::query()->where('restaurant_id', $restaurantId)->where('is_active', true)
             ->orderBy('name')->get(['id', 'name', 'usage_unit']);
 
-        return view('admin.inventory.transfers', compact('transfers', 'branches', 'items'));
+        $scope = StockTransfer::query()
+            ->whereHas('fromBranch', fn ($query) => $query->where('restaurant_id', $restaurantId))
+            ->when($user->branch_id, fn ($query) => $query->where(fn ($branches) => $branches
+                ->where('from_branch_id', $user->branch_id)->orWhere('to_branch_id', $user->branch_id)));
+        $pageStats = [
+            ['label' => 'Transfers', 'value' => number_format($transfers->total()), 'icon' => 'fas fa-right-left', 'tone' => 'brand', 'hint' => 'All time'],
+            ['label' => 'This month', 'value' => number_format((clone $scope)->where('transferred_at', '>=', now()->startOfMonth())->count()), 'icon' => 'fas fa-calendar', 'tone' => 'info'],
+            ['label' => 'Last 7 days', 'value' => number_format((clone $scope)->where('transferred_at', '>=', now()->subDays(7))->count()), 'icon' => 'fas fa-calendar-week', 'tone' => 'success'],
+            ['label' => 'Branches', 'value' => number_format($branches->count()), 'icon' => 'fas fa-code-branch', 'tone' => 'violet', 'hint' => 'Active locations'],
+        ];
+
+        return view('admin.inventory.transfers', compact('transfers', 'branches', 'items', 'pageStats'));
     }
 
     public function store(Request $request, ActivityLogger $logger): RedirectResponse

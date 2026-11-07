@@ -32,9 +32,11 @@ class TableController extends Controller
             ->with('branch:id,name')
             ->withCount('tables')
             ->orderBy('branch_id')->orderBy('display_order')->orderBy('name')
-            ->get();
+            ->paginate(25)
+            ->withQueryString();
 
         return view('admin.tables.floors', [
+            'pageStats' => $this->seatingStats($user),
             'floors' => $floors,
             'branches' => $this->userBranches($user),
             'canManage' => $this->canManage($request),
@@ -92,6 +94,7 @@ class TableController extends Controller
             ->orderBy('display_order')->orderBy('name')->get(['id', 'branch_id', 'name']);
 
         return view('admin.tables.tables', [
+            'pageStats' => $this->seatingStats($user),
             'tables' => $tables,
             'floors' => $floors,
             'branches' => $this->userBranches($user),
@@ -169,5 +172,21 @@ class TableController extends Controller
         $user = $request->user();
 
         return (bool) $user && ($user->can('tables.manage') || $user->can('admin'));
+    }
+
+    /** Seating overview shared by the floors and tables pages. */
+    private function seatingStats($user): array
+    {
+        $tables = $this->whereUserBranch(RestaurantTable::query(), $user);
+        $active = (clone $tables)->where('status', '!=', 'inactive');
+        $total = (clone $active)->count();
+        $occupied = (clone $tables)->where('status', 'occupied')->count();
+
+        return [
+            ['label' => 'Tables in service', 'value' => number_format($total), 'icon' => 'fas fa-chair', 'tone' => 'brand', 'hint' => number_format((int) (clone $active)->sum('capacity')) . ' seats'],
+            ['label' => 'Available now', 'value' => number_format((clone $tables)->where('status', 'available')->count()), 'icon' => 'fas fa-circle-check', 'tone' => 'success'],
+            ['label' => 'Occupied', 'value' => number_format($occupied), 'icon' => 'fas fa-utensils', 'tone' => 'warning', 'hint' => $total ? round($occupied / $total * 100) . '% occupancy' : null],
+            ['label' => 'Floors / sections', 'value' => number_format($this->whereUserBranch(Floor::query(), $user)->count()), 'icon' => 'fas fa-building', 'tone' => 'info'],
+        ];
     }
 }

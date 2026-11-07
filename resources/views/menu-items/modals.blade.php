@@ -173,7 +173,7 @@
                             @if($item->image_path)
 
                                 <img id="editImagePreview{{ $item->id }}"
-                                     src="{{ asset('storage/' . ltrim($item->image_path, '/')) }}"
+                                     src="{{ $item->image_url }}"
                                      alt="{{ $item->name }}">
 
                                 <span id="editImagePlaceholder{{ $item->id }}"

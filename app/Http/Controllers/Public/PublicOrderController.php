@@ -37,10 +37,14 @@ class PublicOrderController extends Controller
             ? (clone $activeBranches)->value('id')
             : null;
 
+        $paymentGateways = array_keys($this->enabledGateways());
+        $paymentOption = $request->input('payment_option');
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:40'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'email' => [$paymentOption === 'cash_on_delivery' ? 'nullable' : 'required', 'email', 'max:255'],
+            'payment_option' => ['required', Rule::in(['cash_on_delivery', ...$paymentGateways])],
             'address' => ['nullable', 'string', 'max:1000'],
             'branch_id' => [
                 Rule::requiredIf($singleBranchId === null),
@@ -91,6 +95,7 @@ class PublicOrderController extends Controller
                 'customer_id' => $customer->id,
                 'order_number' => 'WEB-' . Str::upper((string) Str::uuid()),
                 'order_type' => 'online',
+                'payment_preference' => $validated['payment_option'],
                 'status' => 'pending',
                 'subtotal' => $subtotal,
                 'discount' => 0,
@@ -124,17 +129,30 @@ class PublicOrderController extends Controller
             }
         }
 
-        return redirect()->route('order.success', ['order' => $trackingToken]);
+        $redirect = redirect()->route('order.success', ['order' => $trackingToken]);
+        if ($validated['payment_option'] !== 'cash_on_delivery') {
+            $redirect->with('start_payment_gateway', $validated['payment_option']);
+        }
+
+        return $redirect;
     }
 
-    public function success(string $order): Response
+    public function success(Request $request, string $order): Response
     {
         $record = $this->findPublicOrder($order);
+        $gateways = $this->enabledGateways();
+        $startPaymentGateway = $request->session()->pull('start_payment_gateway');
+        if (!is_string($startPaymentGateway)
+            || $startPaymentGateway !== $record->payment_preference
+            || !array_key_exists($startPaymentGateway, $gateways)) {
+            $startPaymentGateway = null;
+        }
 
         return response()->view('public.orders.success', [
             'order' => $record,
             'trackingToken' => $order,
-            'gateways' => $this->enabledGateways(),
+            'gateways' => $gateways,
+            'startPaymentGateway' => $startPaymentGateway,
         ])
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Referrer-Policy', 'no-referrer');
@@ -166,6 +184,7 @@ class PublicOrderController extends Controller
         return collect(config('restaurant.gateways', []))
             ->filter(fn (array $gateway, string $name): bool =>
                 ($gateway['enabled'] ?? false)
+                && !empty($gateway['base_url'])
                 && ($name === 'flutterwave'
                     ? !empty($gateway['secret_key'])
                     : !empty($gateway['consumer_key']) && !empty($gateway['consumer_secret']) && !empty($gateway['notification_id']))

@@ -4,6 +4,7 @@
 @section('page-title', 'Menu ' . \Illuminate\Support\Str::plural($label))
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $optionSlug = $type === 'variants' ? 'variant' : 'addon';
     $addFailed = $errors->hasAny(['name', 'price', 'menu_item_id']) && ! old('_method');

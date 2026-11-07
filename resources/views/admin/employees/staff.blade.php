@@ -4,6 +4,7 @@
 @section('page-title', 'Staff Accounts')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="panel p-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <div>

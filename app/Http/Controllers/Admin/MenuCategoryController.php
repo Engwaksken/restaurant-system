@@ -20,9 +20,19 @@ class MenuCategoryController extends Controller
             ->withCount('items')
             ->orderBy('display_order')
             ->orderBy('name')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.menu-categories.index', compact('categories'));
+        $all = MenuCategory::query()->where('restaurant_id', $restaurantId);
+        $itemCount = \App\Models\MenuItem::query()->where('restaurant_id', $restaurantId)->count();
+        $pageStats = [
+            ['label' => 'Categories', 'value' => number_format((clone $all)->count()), 'icon' => 'fas fa-layer-group', 'tone' => 'brand'],
+            ['label' => 'Shown on website', 'value' => number_format((clone $all)->where('is_active', true)->count()), 'icon' => 'fas fa-eye', 'tone' => 'success'],
+            ['label' => 'Hidden', 'value' => number_format((clone $all)->where('is_active', false)->count()), 'icon' => 'fas fa-eye-slash', 'tone' => 'neutral'],
+            ['label' => 'Menu items', 'value' => number_format($itemCount), 'icon' => 'fas fa-burger', 'tone' => 'info', 'href' => route('admin.menu-items.index')],
+        ];
+
+        return view('admin.menu-categories.index', compact('categories', 'pageStats'));
     }
 
     public function store(Request $request): RedirectResponse

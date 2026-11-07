@@ -70,6 +70,7 @@ class PermissionManagementController extends Controller
         'settings.roles-permissions.manage' => 'Manage staff permissions',
         'settings.activity-logs.view' => 'View the restaurant activity log',
         'settings.branches.manage' => 'Manage branches (restaurant-wide staff only)',
+        'settings.branding.manage' => 'Manage restaurant branding, logo, favicon and email styling',
         'employees.staff.manage' => 'Create, edit and deactivate staff accounts',
         'employees.attendance.manage' => 'View, record and correct staff attendance',
         'employees.shifts.manage' => 'Plan staff shifts',
@@ -89,7 +90,17 @@ class PermissionManagementController extends Controller
             ->orderBy('name')
             ->paginate(25);
 
+        $grants = DB::table('user_permissions')
+            ->whereIn('user_id', User::query()->where('restaurant_id', $restaurantId)->select('id'));
+        $pageStats = [
+            ['label' => 'Staff accounts', 'value' => number_format($users->total()), 'icon' => 'fas fa-users', 'tone' => 'brand'],
+            ['label' => 'Full administrators', 'value' => number_format((clone $grants)->where('ability', 'admin')->distinct()->count('user_id')), 'icon' => 'fas fa-user-shield', 'tone' => 'danger', 'hint' => 'Managed from the command line'],
+            ['label' => 'Without permissions', 'value' => number_format(User::query()->where('restaurant_id', $restaurantId)->whereDoesntHave('permissions')->count()), 'icon' => 'fas fa-user-lock', 'tone' => 'warning', 'hint' => 'Cannot use any module yet'],
+            ['label' => 'Available permissions', 'value' => number_format(count(self::ABILITIES)), 'icon' => 'fas fa-key', 'tone' => 'info'],
+        ];
+
         return view('admin.permissions.index', [
+            'pageStats' => $pageStats,
             'users' => $users,
             'abilities' => self::ABILITIES,
         ]);

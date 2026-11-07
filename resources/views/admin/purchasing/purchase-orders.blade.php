@@ -6,6 +6,7 @@
 @section('own-validation-errors', '1')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $canCreate = ! ($branches->isEmpty() || $suppliers->isEmpty() || $inventoryItems->isEmpty());
     $orderRows = old('items', [[]]);

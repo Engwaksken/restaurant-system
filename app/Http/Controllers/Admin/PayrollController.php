@@ -51,7 +51,17 @@ class PayrollController extends Controller
             ->when($user->branch_id, fn ($query) => $query->where('branch_id', $user->branch_id))
             ->orderBy('name')->get(['id', 'name']);
 
+        $scope = $this->whereUserBranch(PayrollRun::query(), $user);
+        $currency = config('restaurant.currency');
+        $pageStats = [
+            ['label' => 'Paid this year', 'value' => $currency . ' ' . number_format((float) (clone $scope)->where('status', 'paid')->where('period_start', '>=', now()->startOfYear()->toDateString())->sum('net_total'), 2), 'icon' => 'fas fa-money-check-dollar', 'tone' => 'success', 'hint' => 'Net pay, ' . now()->year],
+            ['label' => 'Awaiting approval', 'value' => number_format((clone $scope)->where('status', 'draft')->count()), 'icon' => 'fas fa-file-pen', 'tone' => 'warning'],
+            ['label' => 'Approved, unpaid', 'value' => number_format((clone $scope)->where('status', 'approved')->count()), 'icon' => 'fas fa-stamp', 'tone' => 'info'],
+            ['label' => 'Staff on payroll', 'value' => number_format($compensations->count()), 'icon' => 'fas fa-users', 'tone' => 'brand'],
+        ];
+
         return view('admin.employees.payroll', [
+            'pageStats' => $pageStats,
             'runs' => $runs,
             'compensations' => $compensations,
             'staff' => $staff,

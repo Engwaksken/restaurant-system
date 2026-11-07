@@ -4,6 +4,7 @@
 @section('page-title', 'Payroll')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $statusClasses = ['draft' => 'warning', 'approved' => 'primary', 'paid' => 'success', 'void' => 'secondary'];
     $autoOpen = null;

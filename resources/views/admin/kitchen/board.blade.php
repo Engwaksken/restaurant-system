@@ -4,6 +4,7 @@
 @section('page-title', 'Kitchen Display')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $headings = [
         'pending' => ['New', 'fas fa-hourglass-start', 'route' => 'admin.kitchen.pending'],

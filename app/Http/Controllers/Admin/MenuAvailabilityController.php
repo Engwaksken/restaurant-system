@@ -43,7 +43,15 @@ class MenuAvailabilityController extends Controller
         $categories = MenuCategory::query()->where('restaurant_id', $restaurantId)->orderBy('display_order')->orderBy('name')->get(['id', 'name']);
         $unavailableCount = MenuItem::query()->where('restaurant_id', $restaurantId)->where('is_available', false)->count();
 
-        return view('admin.menu-availability.index', compact('items', 'categories', 'filters', 'show', 'unavailableCount'));
+        $total = MenuItem::query()->where('restaurant_id', $restaurantId)->count();
+        $pageStats = [
+            ['label' => 'Menu items', 'value' => number_format($total), 'icon' => 'fas fa-burger', 'tone' => 'brand'],
+            ['label' => 'Available', 'value' => number_format($total - $unavailableCount), 'icon' => 'fas fa-circle-check', 'tone' => 'success', 'hint' => $total ? round(($total - $unavailableCount) / $total * 100) . '% of the menu' : null],
+            ['label' => 'Unavailable', 'value' => number_format($unavailableCount), 'icon' => 'fas fa-circle-pause', 'tone' => $unavailableCount ? 'danger' : 'neutral', 'hint' => 'Cannot be ordered'],
+            ['label' => 'Categories', 'value' => number_format($categories->count()), 'icon' => 'fas fa-layer-group', 'tone' => 'info'],
+        ];
+
+        return view('admin.menu-availability.index', compact('items', 'categories', 'filters', 'show', 'unavailableCount', 'pageStats'));
     }
 
     public function update(Request $request, int $item, ActivityLogger $logger): RedirectResponse

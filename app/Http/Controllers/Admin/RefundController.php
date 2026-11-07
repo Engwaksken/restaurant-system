@@ -40,9 +40,20 @@ class RefundController extends Controller
             ->when($filters['date_from'] ?? null, fn ($q, $from) => $q->where('created_at', '>=', Carbon::parse($from)->startOfDay()))
             ->when($filters['date_to'] ?? null, fn ($q, $to) => $q->where('created_at', '<=', Carbon::parse($to)->endOfDay()));
 
+        $currency = config('restaurant.currency');
+        $total = (float) (clone $query)->sum('amount');
+        $count = (clone $query)->count();
+        $pageStats = [
+            ['label' => 'Total refunded', 'value' => $currency . ' ' . number_format($total, 2), 'icon' => 'fas fa-rotate-left', 'tone' => 'danger', 'hint' => ($filters['date_from'] ?? null) || ($filters['date_to'] ?? null) ? 'For the selected dates' : 'All time'],
+            ['label' => 'Refunds', 'value' => number_format($count), 'icon' => 'fas fa-receipt', 'tone' => 'info'],
+            ['label' => 'Average refund', 'value' => $currency . ' ' . number_format($count ? $total / $count : 0, 2), 'icon' => 'fas fa-divide', 'tone' => 'neutral'],
+            ['label' => 'Refunded today', 'value' => $currency . ' ' . number_format((float) $this->whereUserBranch(Refund::query(), $user)->where('created_at', '>=', now()->startOfDay())->sum('amount'), 2), 'icon' => 'fas fa-calendar-day', 'tone' => 'warning'],
+        ];
+
         return view('admin.finance.refunds', [
+            'pageStats' => $pageStats,
             'refunds' => (clone $query)->with(['order:id,order_number', 'branch:id,name', 'refunder:id,name'])->latest('id')->paginate(25)->withQueryString(),
-            'total' => (float) (clone $query)->sum('amount'),
+            'total' => $total,
             'filters' => $filters,
         ]);
     }

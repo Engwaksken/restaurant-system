@@ -23,7 +23,7 @@ class Order extends Model
     ];
 
     protected $fillable = [
-        'branch_id', 'customer_id', 'restaurant_table_id', 'waiter_id', 'order_number', 'order_type', 'status',
+        'branch_id', 'customer_id', 'restaurant_table_id', 'waiter_id', 'order_number', 'order_type', 'payment_preference', 'status',
         'subtotal', 'discount', 'loyalty_points_redeemed', 'loyalty_discount', 'tax', 'service_charge', 'delivery_fee',
         'total', 'paid_amount', 'balance', 'refunded_amount', 'notes', 'ordered_at', 'completed_at',
     ];

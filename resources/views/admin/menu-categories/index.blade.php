@@ -4,6 +4,7 @@
 @section('page-title', 'Menu Categories')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $addFailed = $errors->hasAny(['name', 'description', 'display_order', 'is_active']) && ! old('_method');
 @endphp
@@ -19,7 +20,7 @@
                         Your categories
                     </h2>
                     <small class="text-muted">
-                        {{ number_format($categories->count()) }} configured
+                        {{ number_format($categories->total()) }} configured
                     </small>
                 </div>
 
@@ -104,6 +105,8 @@
             @endforelse
 
         </div>
+
+        {{ $categories->links() }}
 
     </div>
 </div>

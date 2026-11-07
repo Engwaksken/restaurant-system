@@ -5,6 +5,7 @@
 @section('own-validation-errors', '1')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $statusClasses = ['available' => 'success', 'reserved' => 'info', 'occupied' => 'danger', 'cleaning' => 'warning', 'inactive' => 'secondary'];
     $addFailed = $errors->any() && old('branch_id') !== null;

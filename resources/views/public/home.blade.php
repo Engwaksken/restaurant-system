@@ -1,515 +1,367 @@
+@php
+    $brand = \App\Support\Brand::for($restaurant);
+    $currency = $restaurant->currency ?: $brand->currency();
+    $categoryCounts = $menuItems->countBy('menu_category_id');
+    $showcase = $menuItems->sortByDesc(fn ($item) => !empty($item->image_path))->take(3);
+    $fromPrice = fn ($item) => $item->variants->isNotEmpty() ? (float) $item->variants->min('price') : (float) $item->price;
+    $nameWords = preg_split('/\s+/', trim($brand->name())) ?: [];
+    $lastWord = count($nameWords) > 1 ? array_pop($nameWords) : null;
+@endphp
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>{{ $restaurant->name ?? config('app.name', 'Restaurant') }}</title>
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-    <link
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-        rel="stylesheet"
-    >
-
-    <style>
-        body {
-            background: #f8f9fa;
-        }
-
-        .site-header {
-            z-index: 1030;
-        }
-
-        .hero {
-            background: linear-gradient(135deg, #212529 0%, #495057 100%);
-            color: #fff;
-            padding: 72px 0;
-        }
-
-        .hero .text-muted {
-            color: #dee2e6 !important;
-        }
-
-        .hero-visual {
-            font-size: 9rem;
-            color: rgba(255, 255, 255, .12);
-            text-align: center;
-        }
-
-        .menu-card {
-            height: 100%;
-            border: 0;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0,0,0,.06);
-        }
-
-        .menu-card img {
-            width: 100%;
-            height: 210px;
-            object-fit: cover;
-        }
-
-        .price {
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-
-        .order-modal .modal-header,
-        .order-modal .modal-footer {
-            padding: .75rem 1rem;
-        }
-
-        .order-modal .form-label {
-            font-size: .8rem;
-            font-weight: 600;
-            margin-bottom: .25rem;
-        }
-
-        .order-modal .form-control,
-        .order-modal .form-select {
-            font-size: .875rem;
-        }
-
-        .order-section-title {
-            font-size: .75rem;
-            font-weight: 700;
-            letter-spacing: .04em;
-            text-transform: uppercase;
-            color: #6c757d;
-        }
-
-        .cart-line + .cart-line {
-            border-top: 1px solid #e9ecef;
-        }
-
-        .cart-thumb,
-        .cart-thumb-placeholder {
-            width: 56px;
-            height: 56px;
-            border-radius: 8px;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-
-        .cart-thumb-placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f1f3f5;
-            color: #adb5bd;
-        }
-
-        .order-summary {
-            position: sticky;
-            top: 0;
-        }
-
-        .floating-accessibility {
-            position: fixed;
-            right: 18px;
-            bottom: 84px;
-            z-index: 1055;
-        }
-
-        .floating-accessibility .btn {
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
-        }
-
-        .a11y-menu {
-            min-width: 220px;
-            padding: .35rem;
-            font-size: .875rem;
-        }
-
-        .a11y-menu .dropdown-item {
-            padding: .35rem .6rem;
-            border-radius: 6px;
-        }
-
-        .a11y-menu .dropdown-item i {
-            width: 1.25rem;
-        }
-
-        .a11y-menu .dropdown-divider {
-            margin: .35rem 0;
-        }
-
-        .a11y-menu .a11y-label {
-            font-size: .75rem;
-            font-weight: 600;
-            color: #6c757d;
-            padding: .25rem .6rem;
-        }
-
-        .chat-widget {
-            position: fixed;
-            right: 18px;
-            bottom: 18px;
-            z-index: 1056;
-        }
-
-        .chat-launcher {
-            width: 54px;
-            height: 54px;
-            border-radius: 50%;
-        }
-
-        .chat-panel {
-            position: absolute;
-            right: 0;
-            bottom: 66px;
-            width: 360px;
-            height: 480px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            border-radius: 12px;
-        }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: .5rem;
-            padding: .75rem;
-            background: #f8f9fa;
-        }
-
-        .chat-bubble {
-            max-width: 85%;
-            padding: .5rem .75rem;
-            border-radius: 12px;
-            font-size: .875rem;
-            word-wrap: break-word;
-        }
-
-        .chat-bubble.bot {
-            background: #fff;
-            border: 1px solid #e9ecef;
-            align-self: flex-start;
-        }
-
-        .chat-bubble.user {
-            background: #0d6efd;
-            color: #fff;
-            align-self: flex-end;
-        }
-
-        .chat-bubble ul {
-            padding-left: 1.1rem;
-            margin: .4rem 0 0;
-        }
-
-        @media (max-width: 575.98px) {
-            .chat-widget {
-                right: 12px;
-                bottom: 12px;
-            }
-
-            .chat-panel {
-                position: fixed;
-                left: 8px;
-                right: 8px;
-                bottom: 74px;
-                width: auto;
-                height: min(70vh, 520px);
-            }
-
-            .floating-accessibility {
-                right: 12px;
-                bottom: 76px;
-            }
-        }
-
-        .a11y-high-contrast {
-            filter: contrast(1.6);
-        }
-
-        .a11y-grayscale {
-            filter: grayscale(1);
-        }
-
-        html.a11y-reduce-motion *,
-        html.a11y-reduce-motion *::before,
-        html.a11y-reduce-motion *::after {
-            transition: none !important;
-            animation: none !important;
-            scroll-behavior: auto !important;
-        }
-    </style>
+    @include('public.partials.head')
+    <title>{{ $brand->name() }}{{ $brand->tagline() ? ' · ' . $brand->tagline() : ' · Order online' }}</title>
+    <meta name="description" content="{{ \Illuminate\Support\Str::limit($brand->about() ?? ($brand->tagline() ?? 'Order online from ' . $brand->name() . ' for pickup or delivery.'), 155) }}">
+    <meta property="og:title" content="{{ $brand->name() }}">
+    <meta property="og:description" content="{{ $brand->tagline() ?? 'Order online for pickup or delivery.' }}">
+    @if($brand->heroUrl())<meta property="og:image" content="{{ url($brand->heroUrl()) }}">@endif
 </head>
 
 <body>
 
-<header class="site-header sticky-top bg-white shadow-sm">
-    <div class="container d-flex align-items-center gap-3 py-2">
+@if($brand->phone() || $brand->openingHours())
+    <div class="topline d-none d-md-block">
+        <div class="container">
+            <span>@if($brand->openingHours())<i class="far fa-clock me-2"></i>{{ \Illuminate\Support\Str::of($brand->openingHours())->explode("\n")->first() }}@endif</span>
+            <span class="d-flex gap-3">
+                @if($brand->phone())<a href="tel:{{ preg_replace('/[^0-9+]/', '', $brand->phone()) }}"><i class="fas fa-phone me-2"></i>{{ $brand->phone() }}</a>@endif
+                @foreach($brand->socialLinks() as $link)
+                    <a href="{{ $link['url'] }}" target="_blank" rel="noopener" aria-label="{{ $link['label'] }}"><i class="{{ $link['icon'] }}"></i></a>
+                @endforeach
+            </span>
+        </div>
+    </div>
+@endif
 
-        <a class="d-flex align-items-center gap-2 text-dark text-decoration-none fw-bold fs-5" href="{{ route('home') }}">
-            @if(!empty($restaurant->logo_path))
-                <img src="{{ asset('storage/' . $restaurant->logo_path) }}" alt="" height="36" class="rounded">
-            @else
-                <i class="fas fa-utensils text-primary"></i>
-            @endif
-            <span>{{ $restaurant->name }}</span>
+<header class="site-nav" id="siteNav">
+    <div class="container">
+        <a class="site-brand" href="{{ route('home') }}">
+            @include('public.partials.logo')
+            <span class="min-w-0">
+                <span class="site-brand-name d-block">{{ $brand->name() }}</span>
+                @if($brand->tagline())<span class="site-brand-tag">{{ $brand->tagline() }}</span>@endif
+            </span>
         </a>
 
-        <button
-            type="button"
-            class="btn btn-dark position-relative ms-auto d-flex align-items-center gap-2"
-            data-bs-toggle="modal"
-            data-bs-target="#cartModal"
-            aria-label="Open cart"
-        >
-            <i class="fas fa-cart-shopping"></i>
-            <span class="d-none d-sm-inline">Cart</span>
-            <span class="badge bg-warning text-dark" id="cartCount">0</span>
-            <span class="small d-none d-md-inline">{{ $restaurant->currency }} <span id="headerSubtotal">0.00</span></span>
-        </button>
+        <nav class="site-links" aria-label="Main">
+            <a href="#menu">Menu</a>
+            @if($brand->about())<a href="#about">About</a>@endif
+            <a href="#contact">Contact</a>
+        </nav>
 
+        <button type="button" class="btn btn-primary cart-button" id="cartButton" data-bs-toggle="modal" data-bs-target="#cartModal" aria-label="Open cart">
+            <i class="fas fa-bag-shopping"></i>
+            <span class="d-none d-sm-inline">Cart</span>
+            <span class="cart-count" id="cartCount">0</span>
+            <span class="d-none d-lg-inline small opacity-75">{{ $currency }} <span id="headerSubtotal">0.00</span></span>
+        </button>
     </div>
 </header>
 
 <main id="siteMain">
 
 <section class="hero">
+    @if($brand->heroUrl())
+        <div class="hero-media" style="background-image: url('{{ $brand->heroUrl() }}')"></div>
+    @else
+        <div class="hero-pattern"></div>
+    @endif
+
     <div class="container">
-        <div class="row align-items-center g-4">
-
+        <div class="row align-items-center g-5">
             <div class="col-lg-7">
-                <h1 class="display-5 fw-bold">{{ $restaurant->name }}</h1>
+                <span class="hero-badge"><span>Open for orders</span> Pickup &amp; delivery available</span>
+                <h1>
+                    @if($lastWord){{ implode(' ', $nameWords) }} <em>{{ $lastWord }}</em>@else{{ $brand->name() }}@endif
+                </h1>
+                <p class="lead">{{ $brand->tagline() ?? 'Freshly prepared favourites, ordered online in a few taps. Pick it up or have it delivered to your door.' }}</p>
 
-                <p class="lead text-muted mb-3">
-                    Order online and pick up or get it delivered.
-                </p>
-
-                <ul class="list-unstyled text-muted mb-4">
-                    @if(!empty($restaurant->address))
-                        <li class="mb-1"><i class="fas fa-location-dot me-2"></i>{{ $restaurant->address }}</li>
-                    @endif
-                    @if(!empty($restaurant->phone))
-                        <li><i class="fas fa-phone me-2"></i>{{ $restaurant->phone }}</li>
-                    @endif
-                </ul>
-
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="#menu" class="btn btn-primary btn-lg">
-                        <i class="fas fa-bowl-food me-2"></i>Browse menu
-                    </a>
-                    <button
-                        type="button"
-                        class="btn btn-outline-light btn-lg"
-                        data-bs-toggle="modal"
-                        data-bs-target="#cartModal"
-                    >
-                        <i class="fas fa-cart-shopping me-2"></i>View cart
+                <div class="d-flex flex-wrap gap-3 mt-4">
+                    <a href="#menu" class="btn btn-primary btn-lg"><i class="fas fa-utensils me-2"></i>Explore the menu</a>
+                    <button type="button" class="btn btn-glass btn-lg" data-bs-toggle="modal" data-bs-target="#cartModal">
+                        <i class="fas fa-bag-shopping me-2"></i>View cart
                     </button>
                 </div>
-            </div>
 
-            <div class="col-lg-5 d-none d-lg-block">
-                <div class="hero-visual">
-                    <i class="fas fa-utensils"></i>
+                <div class="hero-facts">
+                    @if($brand->address())<span><i class="fas fa-location-dot"></i>{{ \Illuminate\Support\Str::limit($brand->address(), 60) }}</span>@endif
+                    @if($brand->phone())<span><i class="fas fa-phone"></i>{{ $brand->phone() }}</span>@endif
+                    <span><i class="fas fa-money-bill-wave"></i>Pay on delivery</span>
                 </div>
             </div>
 
+            @if($showcase->isNotEmpty())
+                <div class="col-lg-5 d-none d-lg-block">
+                    <div class="hero-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+                            <strong class="text-white">Popular right now</strong>
+                            <span class="small text-white-50">{{ $menuItems->count() }} dishes</span>
+                        </div>
+                        @foreach($showcase as $item)
+                            <a class="hero-dish" href="#" data-bs-toggle="modal" data-bs-target="#itemModal-{{ $item->id }}">
+                                @if(!empty($item->image_path))
+                                    <img src="{{ $item->image_url }}" alt="" loading="lazy">
+                                @else
+                                    <span class="dish-ph" style="font-size:1.3rem"><i class="fas fa-bowl-food"></i></span>
+                                @endif
+                                <span class="min-w-0">
+                                    <strong class="text-truncate">{{ $item->name }}</strong>
+                                    <small>{{ $item->category?->name }}</small>
+                                </span>
+                                <span class="price-tag">{{ $currency }} {{ number_format($fromPrice($item)) }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
+    <div class="hero-wave"></div>
+</section>
+
+<section class="features">
+    <div class="container">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="feature reveal">
+                    <span class="feature-icon"><i class="fas fa-leaf"></i></span>
+                    <div><h3>Freshly prepared</h3><p>Every order is cooked when you place it, never sitting around.</p></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature reveal">
+                    <span class="feature-icon"><i class="fas fa-motorcycle"></i></span>
+                    <div><h3>Pickup or delivery</h3><p>Collect it yourself or have it brought to your door.</p></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature reveal">
+                    <span class="feature-icon"><i class="fas fa-location-crosshairs"></i></span>
+                    <div><h3>Live order tracking</h3><p>Follow your order from the kitchen to you in real time.</p></div>
+                </div>
+            </div>
         </div>
     </div>
 </section>
 
-
-<section id="menu" class="py-5">
-
+<section id="menu" class="menu-section">
     <div class="container">
-
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
-
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-3">
             <div>
-                <h2 class="fw-bold mb-1">
-                    Our Menu
-                </h2>
-
-                <p class="text-muted mb-0">
-                    Choose from our available food, drinks and services.
-                </p>
+                <span class="eyebrow">Our menu</span>
+                <h2 class="section-title mt-2">What would you like today?</h2>
+                <p class="section-lead mb-0">Choose from our food, drinks and specials. Tap a dish to customise it.</p>
             </div>
-
-            <div style="max-width: 320px; width: 100%;">
-                <input
-                    type="search"
-                    id="menuSearch"
-                    class="form-control"
-                    placeholder="Search menu..."
-                >
-            </div>
-
         </div>
 
-
-        @if($categories->count())
-
-            <div class="d-flex flex-wrap gap-2 mb-4">
-
-                <button
-                    class="btn btn-dark category-filter"
-                    data-category="all"
-                >
-                    All
-                </button>
-
-                @foreach($categories as $category)
-
-                    <button
-                        class="btn btn-outline-dark category-filter"
-                        data-category="{{ $category->id }}"
-                    >
-                        {{ $category->name }}
-                    </button>
-
-                @endforeach
-
+        <div class="menu-toolbar">
+            <div class="d-flex flex-column flex-md-row gap-3 align-items-md-center">
+                @if($categories->count())
+                    <div class="category-scroller flex-grow-1" role="toolbar" aria-label="Filter by category">
+                        <button type="button" class="category-filter active" data-category="all" aria-pressed="true">All<span class="count">{{ $menuItems->count() }}</span></button>
+                        @foreach($categories as $category)
+                            @if($categoryCounts->get($category->id))
+                                <button type="button" class="category-filter" data-category="{{ $category->id }}" aria-pressed="false">
+                                    {{ $category->name }}<span class="count">{{ $categoryCounts->get($category->id) }}</span>
+                                </button>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+                <div class="menu-search ms-md-auto">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <label class="visually-hidden" for="menuSearch">Search the menu</label>
+                    <input type="search" id="menuSearch" class="form-control" placeholder="Search dishes…">
+                </div>
             </div>
-
-        @endif
-
+        </div>
 
         <div class="row g-4" id="menuGrid">
-
             @forelse($menuItems as $item)
-
-                <div
-                    class="col-sm-6 col-lg-4 col-xl-3 menu-item"
-                    data-category="{{ $item->menu_category_id }}"
-                    data-name="{{ strtolower($item->name) }}"
-                >
-
-                    <div class="card menu-card">
-
-                        @if(!empty($item->image_path))
-
-                            <img
-                                src="{{ asset('storage/' . $item->image_path) }}"
-                                alt="{{ $item->name }}"
-                            >
-
-                        @else
-
-                            <div
-                                class="d-flex align-items-center justify-content-center bg-light"
-                                style="height: 210px;"
-                            >
-                                <span class="text-muted">
-                                    No image
-                                </span>
-                            </div>
-
-                        @endif
-
-
-                        <div class="card-body d-flex flex-column">
-
-                            <h5 class="fw-bold">
-                                {{ $item->name }}
-                            </h5>
-
-                            @if(!empty($item->description))
-                                <p class="text-muted small flex-grow-1">
-                                    {{ $item->description }}
-                                </p>
+                @php($hasOptions = $item->variants->isNotEmpty() || $item->addons->isNotEmpty())
+                <div class="col-sm-6 col-lg-4 col-xl-3 menu-item" data-category="{{ $item->menu_category_id }}" data-name="{{ strtolower($item->name . ' ' . $item->description) }}">
+                    <article class="menu-card">
+                        <a href="#" class="menu-card-media d-block" data-bs-toggle="modal" data-bs-target="#itemModal-{{ $item->id }}" aria-label="View {{ $item->name }}">
+                            @if(!empty($item->image_path))
+                                <img src="{{ $item->image_url }}" alt="{{ $item->name }}" loading="lazy">
+                            @else
+                                <span class="dish-ph"><i class="fas fa-bowl-food"></i></span>
                             @endif
-
-                            <div class="price mb-3">
-                                {{ $restaurant->currency }}
-                                @if($item->variants->isNotEmpty())
-                                    from {{ number_format((float) $item->variants->min('price'), 2) }}
+                            @if($item->category)<span class="menu-card-badge">{{ $item->category->name }}</span>@endif
+                        </a>
+                        <div class="menu-card-body">
+                            <h3 class="menu-card-title">{{ $item->name }}</h3>
+                            @if(!empty($item->description))
+                                <p class="menu-card-desc">{{ $item->description }}</p>
+                            @else
+                                <p class="menu-card-desc">&nbsp;</p>
+                            @endif
+                            <div class="menu-card-foot">
+                                <div class="menu-price">
+                                    @if($item->variants->isNotEmpty())<small>from</small>@endif
+                                    <small>{{ $currency }}</small>{{ number_format($fromPrice($item), 2) }}
+                                </div>
+                                @if($hasOptions)
+                                    <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#itemModal-{{ $item->id }}" aria-label="Choose options for {{ $item->name }}">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
                                 @else
-                                    {{ number_format((float) $item->price, 2) }}
+                                    <button type="button" class="add-btn add-to-cart" data-id="{{ $item->id }}" data-name="{{ $item->name }}" data-price="{{ $item->price }}" data-image="{{ $item->image_url ?? '' }}" aria-label="Add {{ $item->name }} to cart">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
                                 @endif
                             </div>
-
-                            <button
-                                type="button"
-                                class="btn btn-primary w-100 mt-auto"
-                                data-bs-toggle="modal"
-                                data-bs-target="#itemModal-{{ $item->id }}"
-                            >
-                                Add to Order
-                            </button>
-
                         </div>
-
-                    </div>
-
+                    </article>
                 </div>
-
             @empty
-
                 <div class="col-12">
-                    <div class="alert alert-light border text-center">
-                        No menu items are currently available.
+                    <div class="menu-empty">
+                        <i class="fas fa-bowl-food d-block"></i>
+                        <h3 class="h5">Our menu is being updated</h3>
+                        <p class="mb-0">Please check back shortly{{ $brand->phone() ? ' or call us on ' . $brand->phone() : '' }}.</p>
                     </div>
                 </div>
-
             @endforelse
 
+            <div class="col-12" id="menuNoResults" hidden>
+                <div class="menu-empty">
+                    <i class="fas fa-magnifying-glass d-block"></i>
+                    <h3 class="h5">No dishes match your search</h3>
+                    <p class="mb-0">Try a different word or browse all categories.</p>
+                </div>
+            </div>
         </div>
 
         @foreach($menuItems as $item)
-            <div class="modal fade" id="itemModal-{{ $item->id }}" tabindex="-1" aria-labelledby="itemModalLabel-{{ $item->id }}" aria-hidden="true">
+            <div class="modal fade item-modal" id="itemModal-{{ $item->id }}" tabindex="-1" aria-labelledby="itemModalLabel-{{ $item->id }}" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="itemModalLabel-{{ $item->id }}">{{ $item->name }}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="item-modal-media">
+                            @if(!empty($item->image_path))
+                                <img src="{{ $item->image_url }}" alt="{{ $item->name }}" loading="lazy">
+                            @else
+                                <span class="dish-ph"><i class="fas fa-bowl-food"></i></span>
+                            @endif
+                            <button type="button" class="item-modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="fas fa-xmark"></i></button>
                         </div>
-                        <div class="modal-body">
+                        <div class="modal-body p-4">
+                            @if($item->category)<span class="eyebrow mb-2">{{ $item->category->name }}</span>@endif
+                            <h5 class="modal-title h4 fw-bold mt-1" id="itemModalLabel-{{ $item->id }}">{{ $item->name }}</h5>
+                            @if(!empty($item->description))
+                                <p class="text-muted mb-3">{{ $item->description }}</p>
+                            @endif
                             <div class="item-options" data-item="{{ $item->id }}">
                                 @if($item->variants->isNotEmpty())
-                                    <label class="form-label small mb-1" for="variant-{{ $item->id }}">Choose</label>
+                                    <div class="option-group-title mt-3">Choose a size or option</div>
+                                    <label class="visually-hidden" for="variant-{{ $item->id }}">Choose</label>
                                     <select class="form-select mb-3 item-variant" id="variant-{{ $item->id }}">
                                         @foreach($item->variants as $variant)
-                                            <option value="{{ $variant->id }}" data-name="{{ $variant->name }}" data-price="{{ $variant->price }}">{{ $variant->name }} — {{ number_format((float) $variant->price, 2) }}</option>
+                                            <option value="{{ $variant->id }}" data-name="{{ $variant->name }}" data-price="{{ $variant->price }}">{{ $variant->name }} — {{ $currency }} {{ number_format((float) $variant->price, 2) }}</option>
                                         @endforeach
                                     </select>
                                 @endif
-                                @foreach($item->addons as $addon)
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input item-addon" type="checkbox" id="addon-{{ $addon->id }}" value="{{ $addon->id }}" data-name="{{ $addon->name }}" data-price="{{ $addon->price }}">
-                                        <label class="form-check-label" for="addon-{{ $addon->id }}">{{ $addon->name }} (+{{ number_format((float) $addon->price, 2) }})</label>
-                                    </div>
-                                @endforeach
+                                @if($item->addons->isNotEmpty())
+                                    <div class="option-group-title mt-3">Add extras</div>
+                                    @foreach($item->addons as $addon)
+                                        <label class="addon-option" for="addon-{{ $addon->id }}">
+                                            <input class="form-check-input item-addon" type="checkbox" id="addon-{{ $addon->id }}" value="{{ $addon->id }}" data-name="{{ $addon->name }}" data-price="{{ $addon->price }}">
+                                            <span>{{ $addon->name }}</span>
+                                            <span class="addon-price">+{{ number_format((float) $addon->price, 2) }}</span>
+                                        </label>
+                                    @endforeach
+                                @endif
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <div class="modal-footer border-0 px-4 pb-4 pt-0">
                             <button
                                 type="button"
-                                class="btn btn-primary add-to-cart"
+                                class="btn btn-primary btn-lg w-100 d-flex justify-content-between align-items-center add-to-cart"
                                 data-id="{{ $item->id }}"
                                 data-name="{{ $item->name }}"
                                 data-price="{{ $item->price }}"
-                                data-image="{{ !empty($item->image_path) ? asset('storage/' . $item->image_path) : '' }}"
+                                data-image="{{ $item->image_url ?? '' }}"
                             >
-                                Add to Order
+                                <span><i class="fas fa-bag-shopping me-2"></i>Add to order</span>
+                                <span>{{ $currency }} <span class="item-modal-total" data-item-total="{{ $item->id }}">{{ number_format($fromPrice($item), 2) }}</span></span>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
         @endforeach
-
     </div>
+</section>
 
+@if($brand->about())
+    <section class="about-section" id="about">
+        <div class="container">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-6">
+                    <div class="about-visual reveal" @if($brand->heroUrl()) style="background-image: url('{{ $brand->heroUrl() }}')" @endif>
+                        <div class="about-stamp">
+                            <strong>{{ $menuItems->count() }}+</strong>
+                            <span class="small">dishes on the menu</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <span class="eyebrow">Our story</span>
+                    <h2 class="section-title mt-2">Welcome to {{ $brand->name() }}</h2>
+                    <p class="text-muted fs-6 mb-4" style="white-space: pre-line">{{ $brand->about() }}</p>
+                    <div class="row g-3">
+                        @if($brand->openingHours())
+                            <div class="col-sm-6">
+                                <div class="info-card">
+                                    <i class="far fa-clock lead-icon"></i>
+                                    <h3>Opening hours</h3>
+                                    <p class="small">{{ $brand->openingHours() }}</p>
+                                </div>
+                            </div>
+                        @endif
+                        @if($brand->address() || $brand->phone())
+                            <div class="col-sm-6">
+                                <div class="info-card">
+                                    <i class="fas fa-location-dot lead-icon"></i>
+                                    <h3>Find us</h3>
+                                    <p class="small">{{ collect([$brand->address(), $brand->phone()])->filter()->implode("\n") }}</p>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+@endif
+
+<section class="py-5">
+    <div class="container py-lg-4">
+        <div class="cta-band reveal">
+            <div class="row align-items-center g-3">
+                <div class="col-lg-8">
+                    <h2 class="h2 mb-2">Hungry? Your next favourite meal is a few taps away.</h2>
+                    <p class="mb-0 opacity-75">Order now and track it live until it reaches you.</p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <a href="#menu" class="btn btn-light btn-lg fw-bold"><i class="fas fa-utensils me-2"></i>Start your order</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 
 </main>
+
+@include('public.partials.footer')
+
+<button type="button" class="mobile-cart-bar" id="mobileCartBar" data-bs-toggle="modal" data-bs-target="#cartModal">
+    <span><i class="fas fa-bag-shopping me-2"></i><span id="mobileCartCount">0</span> items · {{ $currency }} <span id="mobileCartTotal">0.00</span></span>
+    <span class="go">View cart <i class="fas fa-arrow-right ms-1"></i></span>
+</button>
+
+<div class="toast-added" id="addedToast" role="status" aria-live="polite"><i class="fas fa-circle-check"></i><span id="addedToastText">Added to your order</span></div>
 
 
 <div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
@@ -534,18 +386,18 @@
 
                 <div class="row g-0">
 
-                    <div class="col-lg-7 p-3">
+                    <div class="col-lg-7 p-3 p-lg-4">
                         <div class="order-section-title mb-2">Items</div>
 
                         <div id="cartEmpty" class="text-center text-muted py-4">
-                            <i class="fas fa-basket-shopping fs-2 mb-2 d-block"></i>
+                            <i class="fas fa-bag-shopping fs-1 mb-3 d-block text-brand opacity-50"></i>
                             Your cart is empty. Add items from the menu.
                         </div>
 
                         <ul id="cartItems" class="list-unstyled mb-0"></ul>
                     </div>
 
-                    <div class="col-lg-5 p-3 bg-light">
+                    <div class="col-lg-5 p-3 p-lg-4" style="background: var(--cream)">
                         <div class="order-section-title mb-1">Delivery details</div>
                         <div class="small text-muted mb-2"><span class="text-danger" aria-hidden="true">*</span> Required</div>
 
@@ -582,6 +434,28 @@
                                 <input type="hidden" name="branch_id" value="{{ $branches->first()->id }}">
                             @endif
                             <div class="col-12">
+                                <fieldset>
+                                    <legend class="form-label mb-2">Payment method <span class="text-danger" aria-hidden="true">*</span></legend>
+                                    <label class="payment-option d-flex align-items-start gap-2 border rounded p-2 mb-2">
+                                        <input class="form-check-input mt-1" type="radio" name="payment_option" value="cash_on_delivery" @checked(old('payment_option', 'cash_on_delivery') === 'cash_on_delivery') required>
+                                        <span>
+                                            <span class="d-block fw-semibold small"><i class="fas fa-money-bill-wave me-1 text-success"></i>Pay on delivery or pickup</span>
+                                            <span class="d-block text-muted" style="font-size:.75rem">Pay cash when your order arrives or when you collect it.</span>
+                                        </span>
+                                    </label>
+                                    @foreach($paymentGateways as $gateway => $label)
+                                        <label class="payment-option d-flex align-items-start gap-2 border rounded p-2 mb-2">
+                                            <input class="form-check-input mt-1" type="radio" name="payment_option" value="{{ $gateway }}" @checked(old('payment_option') === $gateway)>
+                                            <span>
+                                                <span class="d-block fw-semibold small"><i class="fas {{ $gateway === 'flutterwave' ? 'fa-credit-card' : 'fa-globe' }} me-1 text-primary"></i>Pay online with {{ $label }}</span>
+                                                <span class="d-block text-muted" style="font-size:.75rem">You'll continue to the secure payment page after placing the order.</span>
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                    <div class="form-text" id="onlinePaymentEmailHint" hidden>A valid email is required for online payment.</div>
+                                </fieldset>
+                            </div>
+                            <div class="col-12">
                                 <label class="form-label" for="orderNotes">Order notes <span class="text-muted fw-normal">(optional)</span></label>
                                 <textarea class="form-control form-control-sm" id="orderNotes" name="notes" rows="2" maxlength="1000" placeholder="e.g. Less spicy, no onions, ring the bell twice">{{ old('notes') }}</textarea>
                             </div>
@@ -608,8 +482,8 @@
                     <div class="fw-bold fs-5">{{ $restaurant->currency }} <span id="footerTotal">0.00</span></div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Continue shopping</button>
-                    <button class="btn btn-success px-4" id="submitOrder" type="submit" disabled>Place order</button>
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Continue shopping</button>
+                    <button class="btn btn-primary px-4" id="submitOrder" type="submit" disabled><i class="fas fa-lock me-2"></i>Place order</button>
                 </div>
             </div>
 
@@ -621,7 +495,7 @@
 <div class="floating-accessibility dropup">
     <button
         type="button"
-        class="btn btn-dark shadow"
+        class="btn shadow"
         data-bs-toggle="dropdown"
         data-bs-auto-close="outside"
         aria-expanded="false"
@@ -651,7 +525,7 @@
     <section class="chat-panel card shadow-lg border-0" id="chatPanel" aria-labelledby="chatPanelLabel" hidden>
         <header class="card-header bg-primary text-white d-flex align-items-center justify-content-between py-2 border-0">
             <div>
-                <div class="fw-semibold" id="chatPanelLabel">Restaurant Assistant</div>
+                <div class="fw-semibold" id="chatPanelLabel">{{ $brand->name() }} Assistant</div>
                 <small class="opacity-75">Ask about the menu, prices or orders</small>
             </div>
             <button type="button" class="btn btn-sm text-white" id="chatClose" aria-label="Close chat">
@@ -694,6 +568,36 @@ document.addEventListener('DOMContentLoaded', function () {
     const cartSubtotal = document.getElementById('cartSubtotal');
     const footerTotal = document.getElementById('footerTotal');
     const headerSubtotal = document.getElementById('headerSubtotal');
+    const paymentRadios = [...document.querySelectorAll('[name="payment_option"]')];
+    const customerEmail = document.getElementById('customerEmail');
+    const onlinePaymentEmailHint = document.getElementById('onlinePaymentEmailHint');
+    const noResults = document.getElementById('menuNoResults');
+    const mobileBar = document.getElementById('mobileCartBar');
+    const mobileCount = document.getElementById('mobileCartCount');
+    const mobileTotal = document.getElementById('mobileCartTotal');
+    const cartButton = document.getElementById('cartButton');
+    const toast = document.getElementById('addedToast');
+    const toastText = document.getElementById('addedToastText');
+    let toastTimer = null;
+
+    function announceAdded(name) {
+        toastText.textContent = `${name} added to your order`;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+        cartButton.classList.remove('bump');
+        void cartButton.offsetWidth;
+        cartButton.classList.add('bump');
+    }
+
+    function updatePaymentRequirement() {
+        const onlineSelected = paymentRadios.some(radio => radio.checked && radio.value !== 'cash_on_delivery');
+        customerEmail.required = onlineSelected;
+        onlinePaymentEmailHint.hidden = !onlineSelected;
+    }
+
+    paymentRadios.forEach(radio => radio.addEventListener('change', updatePaymentRequirement));
+    updatePaymentRequirement();
 
     function renderCart() {
         cartList.replaceChildren();
@@ -792,6 +696,10 @@ document.addEventListener('DOMContentLoaded', function () {
         cartCount.textContent = count;
         cartTitleCount.textContent = count ? `(${count})` : '';
         submitOrder.disabled = cartItems.size === 0;
+        mobileCount.textContent = count;
+        mobileTotal.textContent = money(subtotal);
+        mobileBar.classList.toggle('has-items', count > 0);
+        document.body.classList.toggle('has-cart', count > 0);
     }
 
     let selectedCategory = 'all';
@@ -799,6 +707,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function filterItems() {
 
         const term = (search?.value || '').toLowerCase().trim();
+        let visible = 0;
 
         items.forEach(item => {
 
@@ -816,7 +725,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 matchesSearch && matchesCategory
                     ? ''
                     : 'none';
+            if (matchesSearch && matchesCategory) { visible++; }
         });
+
+        if (noResults) { noResults.hidden = visible > 0 || items.length === 0; }
     }
 
     search?.addEventListener('input', filterItems);
@@ -828,12 +740,12 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedCategory = this.dataset.category;
 
             categoryButtons.forEach(btn => {
-                btn.classList.remove('btn-dark');
-                btn.classList.add('btn-outline-dark');
+                btn.classList.remove('active');
+                btn.setAttribute('aria-pressed', 'false');
             });
 
-            this.classList.remove('btn-outline-dark');
-            this.classList.add('btn-dark');
+            this.classList.add('active');
+            this.setAttribute('aria-pressed', 'true');
 
             filterItems();
         });
@@ -857,10 +769,41 @@ document.addEventListener('DOMContentLoaded', function () {
             line.quantity++;
             cartItems.set(key, line);
             renderCart();
+            announceAdded(button.dataset.name);
             const modal = button.closest('.modal');
             if (modal) { bootstrap.Modal.getInstance(modal)?.hide(); }
         });
     });
+
+    // Live price in each item modal as options change.
+    document.querySelectorAll('.item-options').forEach(options => {
+        const id = options.dataset.item;
+        const base = Number(document.querySelector(`.modal .add-to-cart[data-id="${id}"]`)?.dataset.price || 0);
+        const totalEl = document.querySelector(`[data-item-total="${id}"]`);
+        const update = () => {
+            const variant = options.querySelector('.item-variant')?.selectedOptions[0];
+            const addons = [...options.querySelectorAll('.item-addon:checked')];
+            const price = (variant ? Number(variant.dataset.price) : base) + addons.reduce((sum, el) => sum + Number(el.dataset.price), 0);
+            if (totalEl) { totalEl.textContent = money(price); }
+        };
+        options.addEventListener('change', update);
+        update();
+    });
+
+    // Sticky nav shadow and on-scroll reveal.
+    const nav = document.getElementById('siteNav');
+    const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 10);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+            if (entry.isIntersecting) { entry.target.classList.add('in'); observer.unobserve(entry.target); }
+        }), { threshold: .15 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    } else {
+        document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+    }
 
     renderCart();
 
@@ -975,6 +918,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
+
 
 </body>
 </html>

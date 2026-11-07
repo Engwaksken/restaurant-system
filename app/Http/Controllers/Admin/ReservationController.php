@@ -54,7 +54,18 @@ class ReservationController extends Controller
             ->orderBy('branch_id')->orderBy('name')
             ->get(['id', 'branch_id', 'name', 'capacity']);
 
+        $day = $this->whereUserBranch(Reservation::query(), $user)
+            ->whereBetween('reserved_at', [$date->copy()->startOfDay(), $date->copy()->endOfDay()]);
+        $live = (clone $day)->whereNotIn('status', ['cancelled', 'no_show']);
+        $pageStats = [
+            ['label' => 'Bookings', 'value' => number_format((clone $live)->count()), 'icon' => 'fas fa-calendar-check', 'tone' => 'brand', 'hint' => $date->isToday() ? 'Today' : $date->format('D j M Y')],
+            ['label' => 'Guests expected', 'value' => number_format((int) (clone $live)->sum('guest_count')), 'icon' => 'fas fa-user-group', 'tone' => 'info'],
+            ['label' => 'Awaiting confirmation', 'value' => number_format((clone $day)->where('status', 'pending')->count()), 'icon' => 'fas fa-hourglass-half', 'tone' => 'warning'],
+            ['label' => 'Seated', 'value' => number_format((clone $day)->where('status', 'seated')->count()), 'icon' => 'fas fa-chair', 'tone' => 'success'],
+        ];
+
         return view('admin.tables.reservations', [
+            'pageStats' => $pageStats,
             'reservations' => $reservations,
             'tables' => $tables,
             'branches' => $this->userBranches($user),

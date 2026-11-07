@@ -49,7 +49,6 @@ $adminModuleRoutes = [
   
 
     // Settings
-    ['admin.settings.restaurant', 'settings/restaurant', 'settings.restaurant'],
     ['admin.settings.taxes', 'settings/taxes', 'settings.taxes'],
     ['admin.settings.payment-gateways', 'settings/payment-gateways', 'settings.payment-gateways'],
     ['admin.settings.receipt', 'settings/receipt', 'settings.receipt'],

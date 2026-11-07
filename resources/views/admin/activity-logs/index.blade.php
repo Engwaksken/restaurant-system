@@ -4,6 +4,7 @@
 @section('page-title', 'Activity Logs')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $formatValue = function ($value): string {
         if (is_bool($value)) { return $value ? 'yes' : 'no'; }

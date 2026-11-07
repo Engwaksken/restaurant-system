@@ -118,12 +118,48 @@ class MenuOptionsLoyaltyTest extends TestCase
 
         $this->get('/')->assertOk()->assertSee('Double')->assertSee('Bacon');
         $base = ['name' => 'Guest', 'phone' => '0700111222'];
-        $this->post(route('order.store'), [...$base, 'items' => [['menu_item_id' => $burger->id, 'quantity' => 1]]])
+        $this->post(route('order.store'), [...$base, 'payment_option' => 'cash_on_delivery', 'items' => [['menu_item_id' => $burger->id, 'quantity' => 1]]])
             ->assertSessionHasErrors('items.0.variant_id');
-        $this->post(route('order.store'), [...$base, 'items' => [['menu_item_id' => $burger->id, 'quantity' => 2, 'variant_id' => $double->id, 'addon_ids' => [$bacon->id]]]])
+        $this->post(route('order.store'), [...$base, 'payment_option' => 'cash_on_delivery', 'items' => [['menu_item_id' => $burger->id, 'quantity' => 2, 'variant_id' => $double->id, 'addon_ids' => [$bacon->id]]]])
             ->assertRedirect();
-        $this->assertDatabaseHas('orders', ['order_type' => 'online', 'subtotal' => '29.00', 'total' => '29.00']);
+        $this->assertDatabaseHas('orders', ['order_type' => 'online', 'payment_preference' => 'cash_on_delivery', 'subtotal' => '29.00', 'total' => '29.00']);
         $this->assertDatabaseHas('order_items', ['variant_name' => 'Double', 'unit_price' => '14.50']);
+    }
+
+    public function test_public_order_can_select_a_configured_online_payment_option(): void
+    {
+        Mail::fake();
+        config([
+            'restaurant.public_code' => 'PUBLIC',
+            'restaurant.tax_rate' => 0,
+            'restaurant.delivery_fee' => 0,
+            'restaurant.gateways.flutterwave' => [
+                'enabled' => true,
+                'secret_key' => 'test-secret',
+                'base_url' => 'https://api.flutterwave.com/v3',
+            ],
+        ]);
+        $restaurant = Restaurant::create(['name' => 'Public', 'code' => 'PUBLIC', 'currency' => 'USD']);
+        Branch::create(['restaurant_id' => $restaurant->id, 'name' => 'Only branch', 'code' => 'ONLY']);
+        $burger = $this->menuItem($restaurant, 'Burger', 8);
+
+        $response = $this->post(route('order.store'), [
+            'name' => 'Guest',
+            'phone' => '0700111222',
+            'email' => 'guest@example.test',
+            'payment_option' => 'flutterwave',
+            'items' => [['menu_item_id' => $burger->id, 'quantity' => 1]],
+        ])->assertRedirect();
+
+        $order = Order::query()->firstOrFail();
+        $this->assertSame('flutterwave', $order->payment_preference);
+        $path = parse_url($response->headers->get('Location'), PHP_URL_PATH);
+        preg_match('#/order/success/([a-f0-9]{64})$#', (string) $path, $matches);
+        $this->assertNotEmpty($matches[1] ?? null);
+        $this->get(route('order.success', $matches[1]))
+            ->assertOk()
+            ->assertSee('startOnlinePayment', false)
+            ->assertSee('flutterwave', false);
     }
 
     public function test_loyalty_points_are_earned_redeemed_returned_and_clawed_back(): void

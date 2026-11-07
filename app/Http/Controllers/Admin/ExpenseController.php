@@ -36,8 +36,19 @@ class ExpenseController extends Controller
             ->whereYear('expense_date', now()->year)
             ->sum('amount');
         $canManage = $user->can('finance.expenses.manage') || $user->can('admin');
+        $lastMonth = (float) $this->scopedExpenses($request, $restaurantId)
+            ->whereBetween('expense_date', [now()->subMonthNoOverflow()->startOfMonth()->toDateString(), now()->subMonthNoOverflow()->endOfMonth()->toDateString()])
+            ->sum('amount');
+        $today = (float) $this->scopedExpenses($request, $restaurantId)->whereDate('expense_date', now()->toDateString())->sum('amount');
+        $currency = config('restaurant.currency');
+        $pageStats = [
+            ['label' => 'This month', 'value' => $currency . ' ' . number_format($total, 2), 'icon' => 'fas fa-wallet', 'tone' => 'brand', 'hint' => now()->format('F Y')],
+            ['label' => 'Last month', 'value' => $currency . ' ' . number_format($lastMonth, 2), 'icon' => 'fas fa-calendar-minus', 'tone' => 'neutral', 'hint' => $lastMonth > 0 ? (($total >= $lastMonth ? '▲ ' : '▼ ') . number_format(abs(($total - $lastMonth) / $lastMonth * 100), 1) . '% month on month') : 'No spend recorded'],
+            ['label' => 'Today', 'value' => $currency . ' ' . number_format($today, 2), 'icon' => 'fas fa-calendar-day', 'tone' => 'info'],
+            ['label' => 'Records', 'value' => number_format($expenses->total()), 'icon' => 'fas fa-list', 'tone' => 'violet', 'hint' => $categories->count() . ' categories'],
+        ];
 
-        return view('admin.expenses.index', compact('expenses', 'branches', 'categories', 'total', 'canManage'));
+        return view('admin.expenses.index', compact('expenses', 'branches', 'categories', 'total', 'canManage', 'pageStats'));
     }
 
     public function storeCategory(Request $request): RedirectResponse

@@ -4,6 +4,7 @@
 @section('page-title', 'Cash Register')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $currency = config('restaurant.currency');
     $money = fn ($v) => $currency . ' ' . number_format((float) $v, 2);

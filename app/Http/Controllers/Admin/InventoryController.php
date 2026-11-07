@@ -28,7 +28,7 @@ class InventoryController extends Controller
             ->select('inventory_stocks.quantity', 'branches.name as branch_name', 'inventory_items.name as item_name', 'inventory_items.sku', 'inventory_items.usage_unit', 'inventory_items.minimum_stock', 'inventory_items.reorder_level')
             ->orderBy('branches.name')->orderBy('inventory_items.name')->paginate(30)->withQueryString();
 
-        return view('admin.inventory.ledger', ['title' => 'Stock Balances', 'stocks' => $stocks]);
+        return view('admin.inventory.ledger', ['title' => 'Stock Balances', 'stocks' => $stocks, 'pageStats' => $this->inventoryStats($restaurantId, $user)]);
     }
 
     public function adjustments(Request $request): View
@@ -45,7 +45,9 @@ class InventoryController extends Controller
             ->select('stock_movements.*', 'branches.name as branch_name', 'inventory_items.name as item_name', 'inventory_items.usage_unit', 'users.name as actor_name')
             ->orderByDesc('stock_movements.id')->paginate(30)->withQueryString();
 
-        return view('admin.inventory.adjustments', compact('movements'));
+        $pageStats = $this->inventoryStats($restaurantId, $user);
+
+        return view('admin.inventory.adjustments', compact('movements', 'pageStats'));
     }
 
     public function lowStock(Request $request): View
@@ -64,7 +66,7 @@ class InventoryController extends Controller
             ->select('inventory_stocks.quantity', 'branches.name as branch_name', 'inventory_items.name as item_name', 'inventory_items.usage_unit', 'inventory_items.minimum_stock', 'inventory_items.reorder_level')
             ->orderBy('branches.name')->orderBy('inventory_items.name')->paginate(30)->withQueryString();
 
-        return view('admin.inventory.ledger', ['title' => 'Low Stock', 'stocks' => $stocks]);
+        return view('admin.inventory.ledger', ['title' => 'Low Stock', 'stocks' => $stocks, 'pageStats' => $this->inventoryStats($restaurantId, $user)]);
     }
 
     public function index(Request $request): View
@@ -104,7 +106,9 @@ class InventoryController extends Controller
             ->merge(DB::table('stock_movements')->whereIn('inventory_item_id', $itemIds)->pluck('inventory_item_id'))
             ->unique()->values()->all();
 
-        return view('admin.inventory.index', compact('branches', 'categories', 'items', 'activeItems', 'stocks', 'stockedItemIds'));
+        $pageStats = $this->inventoryStats($restaurantId, $user);
+
+        return view('admin.inventory.index', compact('branches', 'categories', 'items', 'activeItems', 'stocks', 'stockedItemIds', 'pageStats'));
     }
 
     public function storeItem(Request $request): RedirectResponse
@@ -268,5 +272,35 @@ class InventoryController extends Controller
         );
 
         return (int) $user->restaurant_id;
+    }
+
+    /** Headline inventory figures shown on every inventory page. */
+    private function inventoryStats(int $restaurantId, $user): array
+    {
+        $stocks = DB::table('inventory_stocks')
+            ->join('branches', 'branches.id', '=', 'inventory_stocks.branch_id')
+            ->join('inventory_items', 'inventory_items.id', '=', 'inventory_stocks.inventory_item_id')
+            ->where('branches.restaurant_id', $restaurantId)
+            ->where('inventory_items.restaurant_id', $restaurantId)
+            ->whereNull('inventory_items.deleted_at')
+            ->where('inventory_items.is_active', true)
+            ->when($user->branch_id, fn ($query) => $query->where('branches.id', $user->branch_id));
+        $low = (clone $stocks)
+            ->whereRaw('inventory_stocks.quantity <= CASE WHEN inventory_items.minimum_stock >= inventory_items.reorder_level THEN inventory_items.minimum_stock ELSE inventory_items.reorder_level END')
+            ->count();
+        $out = (clone $stocks)->where('inventory_stocks.quantity', '<=', 0)->count();
+        $movementsToday = DB::table('stock_movements')
+            ->join('branches', 'branches.id', '=', 'stock_movements.branch_id')
+            ->where('branches.restaurant_id', $restaurantId)
+            ->when($user->branch_id, fn ($query) => $query->where('branches.id', $user->branch_id))
+            ->where('stock_movements.created_at', '>=', now()->startOfDay())
+            ->count();
+
+        return [
+            ['label' => 'Active items', 'value' => number_format(InventoryItem::query()->where('restaurant_id', $restaurantId)->where('is_active', true)->count()), 'icon' => 'fas fa-boxes-stacked', 'tone' => 'brand', 'href' => route('admin.inventory.products')],
+            ['label' => 'Low stock', 'value' => number_format($low), 'icon' => 'fas fa-triangle-exclamation', 'tone' => $low > 0 ? 'warning' : 'success', 'hint' => $low > 0 ? 'At or below reorder level' : 'All above reorder level', 'href' => route('admin.inventory.low-stock')],
+            ['label' => 'Out of stock', 'value' => number_format($out), 'icon' => 'fas fa-ban', 'tone' => $out > 0 ? 'danger' : 'neutral', 'href' => route('admin.inventory.stock')],
+            ['label' => 'Movements today', 'value' => number_format($movementsToday), 'icon' => 'fas fa-right-left', 'tone' => 'info', 'href' => route('admin.inventory.adjustments')],
+        ];
     }
 }

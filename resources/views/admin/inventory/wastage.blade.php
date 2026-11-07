@@ -6,6 +6,7 @@
 @section('own-validation-errors', '1')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $canRecord = ! ($branches->isEmpty() || $items->isEmpty());
 @endphp

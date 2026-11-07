@@ -4,6 +4,7 @@
 @section('page-title', 'Shifts')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $autoOpen = $manages && $errors->any() && session()->hasOldInput('starts_at') ? 'add-shift' : null;
 @endphp

@@ -220,7 +220,7 @@
                         <tr>
                             <td class="ps-3">
                                 @if($item->image_path)
-                                    <img src="{{ asset('storage/' . ltrim($item->image_path, '/')) }}"
+                                    <img src="{{ $item->image_url }}"
                                          alt="{{ $item->name }}"
                                          class="menu-item-image border"
                                          loading="lazy">

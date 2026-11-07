@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BranchController;
+use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\CashRegisterController;
 use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\WorkforceController;
@@ -232,6 +233,9 @@ Route::middleware('auth')
         Route::patch('/menu-availability/{item}', [MenuAvailabilityController::class, 'update'])
             ->whereNumber('item')->name('menu-availability.update');
         Route::get('/settings/activity-logs', [ActivityLogController::class, 'index'])->name('settings.activity-logs');
+
+        Route::get('/settings/restaurant', [BrandingController::class, 'edit'])->name('settings.restaurant');
+        Route::put('/settings/restaurant', [BrandingController::class, 'update'])->name('settings.restaurant.update');
 
         Route::get('/settings/branches', [BranchController::class, 'index'])->name('settings.branches');
         Route::post('/settings/branches', [BranchController::class, 'store'])->name('settings.branches.store');

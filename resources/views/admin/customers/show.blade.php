@@ -30,6 +30,18 @@
             </dl>
         @endif
         <p class="small text-muted mt-3 mb-0">Customer since {{ $customer->created_at?->format('j M Y') }}</p>
+        @if($canErase)
+            <details class="mt-3 border-top pt-3">
+                <summary class="text-danger small">Erase personal data</summary>
+                <p class="small text-muted mt-2">Removes name, contact details, notes, loyalty points, reservation guest details and feedback comments. Orders and payments are kept for accounting but no longer identify this person. This cannot be undone.</p>
+                <form method="POST" action="{{ route('admin.customers.erase', $customer->id) }}">
+                    @csrf @method('DELETE')
+                    <label class="form-label small" for="eraseConfirm">Type ERASE to confirm</label>
+                    <input class="form-control form-control-sm mb-2" id="eraseConfirm" name="confirm" required autocomplete="off">
+                    <button class="btn btn-sm btn-danger" type="submit">Erase customer</button>
+                </form>
+            </details>
+        @endif
     </div></div>
     <div class="col-lg-8">
         <div class="panel p-4 mb-4">

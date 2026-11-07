@@ -20,18 +20,13 @@ use Illuminate\Support\Facades\Route;
 
 $adminModuleRoutes = [
     // POS
-    ['admin.pos.held', 'pos/held', 'pos.held'],
-    ['admin.pos.returns', 'pos/returns', 'pos.returns'],
 
     // Menu
-    ['admin.menu-addons.index', 'menu-addons', 'menu.addons'],
-    ['admin.menu-variants.index', 'menu-variants', 'menu.variants'],
 
     // Tables
     ['admin.qr-ordering.index', 'qr-ordering', 'tables.qr'],
 
     // Customers
-    ['admin.loyalty.index', 'loyalty', 'customers.loyalty'],
     ['admin.customer-accounts.index', 'customer-accounts', 'customers.accounts'],
 
     // Inventory
@@ -42,17 +37,11 @@ $adminModuleRoutes = [
     // Finance
     ['admin.payments.index', 'payments', 'finance.payments'],
     ['admin.receivables.index', 'receivables', 'finance.receivables'],
-    ['admin.cash-register.index', 'cash-register', 'finance.cash-register'],
     ['admin.accounts.index', 'accounts', 'finance.accounts'],
     ['admin.general-ledger.index', 'general-ledger', 'finance.general-ledger'],
-    ['admin.reconciliation.index', 'reconciliation', 'finance.reconciliation'],
 
     // Employees
-    ['admin.staff.index', 'staff', 'employees.staff'],
     ['admin.roles.index', 'roles', 'employees.roles'],
-    ['admin.attendance.index', 'attendance', 'employees.attendance'],
-    ['admin.shifts.index', 'shifts', 'employees.shifts'],
-    ['admin.payroll.index', 'payroll', 'employees.payroll'],
 
     // Direct modules
     ['admin.reports.index', 'reports', 'reports.index'],
@@ -61,7 +50,6 @@ $adminModuleRoutes = [
 
     // Settings
     ['admin.settings.restaurant', 'settings/restaurant', 'settings.restaurant'],
-    ['admin.settings.branches', 'settings/branches', 'settings.branches'],
     ['admin.settings.taxes', 'settings/taxes', 'settings.taxes'],
     ['admin.settings.payment-gateways', 'settings/payment-gateways', 'settings.payment-gateways'],
     ['admin.settings.receipt', 'settings/receipt', 'settings.receipt'],

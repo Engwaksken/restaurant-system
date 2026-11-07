@@ -3,12 +3,21 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\BranchController;
+use App\Http\Controllers\Admin\CashRegisterController;
+use App\Http\Controllers\Admin\PayrollController;
+use App\Http\Controllers\Admin\WorkforceController;
+use App\Http\Controllers\Admin\ReconciliationController;
+use App\Http\Controllers\Admin\RefundController;
+use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\ChatbotController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\FeedbackController;
 use App\Http\Controllers\Admin\MenuAvailabilityController;
+use App\Http\Controllers\Admin\LoyaltyController;
+use App\Http\Controllers\Admin\MenuOptionController;
 use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\MenuCategoryController;
 use App\Http\Controllers\Admin\OrderController;
@@ -210,18 +219,68 @@ Route::middleware('auth')
         Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])
             ->whereNumber('reservation')->name('reservations.status');
 
+        Route::post('/pos/hold', [PosController::class, 'hold'])->name('pos.hold');
+        Route::get('/pos/held', [PosController::class, 'held'])->name('pos.held');
+        Route::delete('/pos/held/{held}', [PosController::class, 'discardHeld'])->whereNumber('held')->name('pos.held.destroy');
         Route::get('/pos/current', [OrderController::class, 'current'])->name('pos.current');
         Route::get('/pos/history', [OrderController::class, 'history'])->name('pos.history');
+        Route::get('/menu-{type}', [MenuOptionController::class, 'index'])->whereIn('type', ['variants', 'addons'])->name('menu-options.index');
+        Route::post('/menu-{type}', [MenuOptionController::class, 'store'])->whereIn('type', ['variants', 'addons'])->name('menu-options.store');
+        Route::put('/menu-{type}/{option}', [MenuOptionController::class, 'update'])->whereIn('type', ['variants', 'addons'])->whereNumber('option')->name('menu-options.update');
+        Route::delete('/menu-{type}/{option}', [MenuOptionController::class, 'destroy'])->whereIn('type', ['variants', 'addons'])->whereNumber('option')->name('menu-options.destroy');
         Route::get('/menu-availability', [MenuAvailabilityController::class, 'index'])->name('menu-availability.index');
         Route::patch('/menu-availability/{item}', [MenuAvailabilityController::class, 'update'])
             ->whereNumber('item')->name('menu-availability.update');
         Route::get('/settings/activity-logs', [ActivityLogController::class, 'index'])->name('settings.activity-logs');
 
+        Route::get('/settings/branches', [BranchController::class, 'index'])->name('settings.branches');
+        Route::post('/settings/branches', [BranchController::class, 'store'])->name('settings.branches.store');
+        Route::put('/settings/branches/{branch}', [BranchController::class, 'update'])->whereNumber('branch')->name('settings.branches.update');
+        Route::patch('/settings/branches/{branch}/status', [BranchController::class, 'updateStatus'])->whereNumber('branch')->name('settings.branches.status');
+        Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
+        Route::post('/staff', [StaffController::class, 'store'])->name('staff.store');
+        Route::put('/staff/{staff}', [StaffController::class, 'update'])->whereNumber('staff')->name('staff.update');
+        Route::patch('/staff/{staff}/status', [StaffController::class, 'updateStatus'])->whereNumber('staff')->name('staff.status');
+        Route::put('/staff/{staff}/password', [StaffController::class, 'resetPassword'])->whereNumber('staff')->name('staff.password');
+
+        Route::get('/cash-register', [CashRegisterController::class, 'index'])->name('cash-register.index');
+        Route::post('/cash-register', [CashRegisterController::class, 'open'])->name('cash-register.open');
+        Route::post('/cash-register/{session}/movements', [CashRegisterController::class, 'movement'])->whereNumber('session')->name('cash-register.movement');
+        Route::post('/cash-register/{session}/close', [CashRegisterController::class, 'close'])->whereNumber('session')->name('cash-register.close');
+        Route::post('/cash-register/{session}/review', [CashRegisterController::class, 'review'])->whereNumber('session')->name('cash-register.review');
+        Route::get('/reconciliation', [ReconciliationController::class, 'index'])->name('reconciliation.index');
+        Route::post('/reconciliation/match', [ReconciliationController::class, 'match'])->name('reconciliation.match');
+        Route::patch('/reconciliation/payments/{payment}', [ReconciliationController::class, 'dispute'])->whereNumber('payment')->name('reconciliation.dispute');
+        Route::get('/pos/returns', [RefundController::class, 'index'])->name('pos.returns');
+        Route::post('/orders/{order}/refunds', [RefundController::class, 'store'])->whereNumber('order')->name('orders.refunds.store');
+
+        Route::get('/attendance', [WorkforceController::class, 'attendance'])->name('attendance.index');
+        Route::post('/attendance/clock', [WorkforceController::class, 'clock'])->middleware('throttle:20,1')->name('attendance.clock');
+        Route::post('/attendance', [WorkforceController::class, 'storeAttendance'])->name('attendance.store');
+        Route::put('/attendance/{attendance}', [WorkforceController::class, 'updateAttendance'])->whereNumber('attendance')->name('attendance.update');
+        Route::get('/shifts', [WorkforceController::class, 'shifts'])->name('shifts.index');
+        Route::post('/shifts', [WorkforceController::class, 'storeShift'])->name('shifts.store');
+        Route::delete('/shifts/{shift}', [WorkforceController::class, 'destroyShift'])->whereNumber('shift')->name('shifts.destroy');
+        Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+        Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');
+        Route::post('/payroll/compensation', [PayrollController::class, 'saveCompensation'])->name('payroll.compensation');
+        Route::get('/payroll/{run}', [PayrollController::class, 'show'])->whereNumber('run')->name('payroll.show');
+        Route::get('/payroll/{run}/payslips/{line}', [PayrollController::class, 'payslip'])->whereNumber(['run', 'line'])->name('payroll.payslip');
+        Route::post('/payroll/{run}/recalculate', [PayrollController::class, 'recalculate'])->whereNumber('run')->name('payroll.recalculate');
+        Route::post('/payroll/{run}/lines/{line}/adjustments', [PayrollController::class, 'addAdjustment'])->whereNumber(['run', 'line'])->name('payroll.adjustments.store');
+        Route::delete('/payroll/{run}/adjustments/{adjustment}', [PayrollController::class, 'removeAdjustment'])->whereNumber(['run', 'adjustment'])->name('payroll.adjustments.destroy');
+        Route::post('/payroll/{run}/approve', [PayrollController::class, 'approve'])->whereNumber('run')->name('payroll.approve');
+        Route::post('/payroll/{run}/pay', [PayrollController::class, 'pay'])->whereNumber('run')->name('payroll.pay');
+        Route::post('/payroll/{run}/void', [PayrollController::class, 'void'])->whereNumber('run')->name('payroll.void');
+
         Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
         Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
         Route::get('/customers/{customer}', [CustomerController::class, 'show'])->whereNumber('customer')->name('customers.show');
         Route::put('/customers/{customer}', [CustomerController::class, 'update'])->whereNumber('customer')->name('customers.update');
+        Route::delete('/customers/{customer}', [CustomerController::class, 'erase'])->whereNumber('customer')->name('customers.erase');
         Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback.index');
+        Route::get('/loyalty', [LoyaltyController::class, 'index'])->name('loyalty.index');
+        Route::post('/loyalty/adjust', [LoyaltyController::class, 'adjust'])->name('loyalty.adjust');
 
         Route::get('/recipes', [RecipeController::class, 'index'])->name('recipes.index');
         Route::post('/recipes', [RecipeController::class, 'store'])->name('recipes.store');

@@ -203,12 +203,34 @@
                             @endif
 
                             <div class="price mb-3">
-                                {{ $restaurant->currency }} {{ number_format((float) $item->price, 2) }}
+                                {{ $restaurant->currency }}
+                                @if($item->variants->isNotEmpty())
+                                    from {{ number_format((float) $item->variants->min('price'), 2) }}
+                                @else
+                                    {{ number_format((float) $item->price, 2) }}
+                                @endif
+                            </div>
+
+                            <div class="item-options mb-3" data-item="{{ $item->id }}">
+                                @if($item->variants->isNotEmpty())
+                                    <label class="form-label small mb-1" for="variant-{{ $item->id }}">Choose</label>
+                                    <select class="form-select form-select-sm mb-2 item-variant" id="variant-{{ $item->id }}">
+                                        @foreach($item->variants as $variant)
+                                            <option value="{{ $variant->id }}" data-name="{{ $variant->name }}" data-price="{{ $variant->price }}">{{ $variant->name }} — {{ number_format((float) $variant->price, 2) }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                                @foreach($item->addons as $addon)
+                                    <div class="form-check small">
+                                        <input class="form-check-input item-addon" type="checkbox" id="addon-{{ $addon->id }}" value="{{ $addon->id }}" data-name="{{ $addon->name }}" data-price="{{ $addon->price }}">
+                                        <label class="form-check-label" for="addon-{{ $addon->id }}">{{ $addon->name }} (+{{ number_format((float) $addon->price, 2) }})</label>
+                                    </div>
+                                @endforeach
                             </div>
 
                             <button
                                 type="button"
-                                class="btn btn-primary w-100 add-to-cart"
+                                class="btn btn-primary w-100 add-to-cart mt-auto"
                                 data-id="{{ $item->id }}"
                                 data-name="{{ $item->name }}"
                                 data-price="{{ $item->price }}"
@@ -305,7 +327,15 @@ document.addEventListener('DOMContentLoaded', function () {
         let subtotal = 0;
         let index = 0;
 
-        cartItems.forEach((line, id) => {
+        const addHidden = (name, value) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            cartPayload.append(input);
+        };
+
+        cartItems.forEach((line, key) => {
             subtotal += line.price * line.quantity;
             const row = document.createElement('li');
             row.className = 'list-group-item d-flex justify-content-between align-items-center';
@@ -315,17 +345,14 @@ document.addEventListener('DOMContentLoaded', function () {
             remove.type = 'button';
             remove.className = 'btn btn-sm btn-outline-danger';
             remove.textContent = 'Remove';
-            remove.addEventListener('click', () => { cartItems.delete(id); renderCart(); });
+            remove.addEventListener('click', () => { cartItems.delete(key); renderCart(); });
             row.append(text, remove);
             cartList.append(row);
 
-            [['menu_item_id', id], ['quantity', line.quantity]].forEach(([key, value]) => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = `items[${index}][${key}]`;
-                input.value = value;
-                cartPayload.append(input);
-            });
+            addHidden(`items[${index}][menu_item_id]`, line.id);
+            addHidden(`items[${index}][quantity]`, line.quantity);
+            if (line.variantId) { addHidden(`items[${index}][variant_id]`, line.variantId); }
+            line.addonIds.forEach((addonId, i) => addHidden(`items[${index}][addon_ids][${i}]`, addonId));
             index++;
         });
 
@@ -383,9 +410,19 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.add-to-cart').forEach(button => {
         button.addEventListener('click', () => {
             const id = button.dataset.id;
-            const line = cartItems.get(id) || { name: button.dataset.name, price: Number(button.dataset.price), quantity: 0 };
+            const options = document.querySelector(`.item-options[data-item="${id}"]`);
+            const variant = options?.querySelector('.item-variant')?.selectedOptions[0];
+            const addons = [...(options?.querySelectorAll('.item-addon:checked') || [])];
+            const addonIds = addons.map((el) => el.value).sort();
+            const key = [id, variant ? variant.value : '', addonIds.join('.')].join('|');
+            const name = button.dataset.name
+                + (variant ? ` (${variant.dataset.name})` : '')
+                + addons.map((el) => ` + ${el.dataset.name}`).join('');
+            const price = (variant ? Number(variant.dataset.price) : Number(button.dataset.price))
+                + addons.reduce((sum, el) => sum + Number(el.dataset.price), 0);
+            const line = cartItems.get(key) || { id, variantId: variant ? variant.value : null, addonIds, name, price, quantity: 0 };
             line.quantity++;
-            cartItems.set(id, line);
+            cartItems.set(key, line);
             renderCart();
             document.getElementById('checkout').scrollIntoView({ behavior: 'smooth', block: 'start' });
         });

@@ -42,6 +42,17 @@ class User extends Authenticatable
         return $this->hasMany(UserPermission::class);
     }
 
+    /** Holder of the `admin` wildcard: only manageable through reviewed CLI provisioning. */
+    public function isWildcardAdmin(): bool
+    {
+        return DB::table('user_permissions')->where('user_id', $this->getKey())->where('ability', 'admin')->exists();
+    }
+
+    public function branch(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -52,6 +63,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'deactivated_at' => 'datetime',
         ];
     }
 }

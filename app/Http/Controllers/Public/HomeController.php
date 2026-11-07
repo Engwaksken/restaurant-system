@@ -25,7 +25,11 @@ class HomeController extends Controller
             ->get();
 
         $menuItems = MenuItem::query()
-            ->with('category')
+            ->with([
+                'category',
+                'variants' => fn ($query) => $query->where('is_available', true),
+                'addons' => fn ($query) => $query->where('is_available', true),
+            ])
             ->where('is_available', true)
             ->where('restaurant_id', $restaurant->id)
             ->whereHas('category', fn ($query) => $query

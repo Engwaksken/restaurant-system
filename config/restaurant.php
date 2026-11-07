@@ -8,6 +8,46 @@ return [
     'kitchen_late_minutes' => (int) env('KITCHEN_LATE_MINUTES', 20),
     // A table is held this many minutes either side of a reservation time.
     'reservation_duration_minutes' => (int) env('RESERVATION_DURATION_MINUTES', 120),
+
+    'cash' => [
+        // Cash payments and cash refunds must belong to the cashier's open drawer.
+        'require_open_session' => (bool) env('CASH_REQUIRE_OPEN_SESSION', true),
+        // Count differences up to this amount close without explanation or review.
+        'variance_tolerance' => (float) env('CASH_VARIANCE_TOLERANCE', 0),
+    ],
+
+    // Non-cash payment methods staff can record; cash is reconciled by drawer counts.
+    'payment_methods' => [
+        'cash' => 'Cash',
+        'mtn_mobile_money' => 'MTN Mobile Money',
+        'airtel_money' => 'Airtel Money',
+        'card' => 'Card',
+        'bank' => 'Bank transfer',
+        'manual' => 'Other (manual)',
+    ],
+
+    'loyalty' => [
+        // Off until the owner approves the programme rates below.
+        'enabled' => (bool) env('LOYALTY_ENABLED', false),
+        // Customers earn 1 point per this much net spend (after discounts, before tax).
+        'earn_amount' => (float) env('LOYALTY_EARN_AMOUNT', 1000),
+        // Currency value of one point when redeemed.
+        'point_value' => (float) env('LOYALTY_POINT_VALUE', 10),
+        'min_redeem_points' => (int) env('LOYALTY_MIN_REDEEM_POINTS', 100),
+        // Points may pay for at most this share of an order subtotal.
+        'max_redeem_percent' => (float) env('LOYALTY_MAX_REDEEM_PERCENT', 50),
+    ],
+
+    'payroll' => [
+        // Four-eyes control: the approver must not be the preparer.
+        'separate_approver' => (bool) env('PAYROLL_SEPARATE_APPROVER', true),
+        'expense_category' => env('PAYROLL_EXPENSE_CATEGORY', 'Payroll'),
+        // Statutory deductions applied to gross pay on every payslip. Configure the
+        // rates your jurisdiction requires; none are assumed. Example:
+        // ['label' => 'NSSF (employee)', 'type' => 'percent', 'value' => 5],
+        // ['label' => 'Union dues', 'type' => 'fixed', 'value' => 2000],
+        'statutory_deductions' => [],
+    ],
     'gateways' => [
         'flutterwave' => [
             'enabled' => (bool) env('FLUTTERWAVE_ENABLED', false),

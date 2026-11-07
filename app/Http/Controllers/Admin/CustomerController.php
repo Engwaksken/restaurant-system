@@ -13,15 +13,17 @@ use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
  * Restaurant customer directory. Customers belong to the restaurant; order
  * history and spend are limited to the branches the user may see.
  *
- * There is intentionally no delete: erasure/anonymisation needs an approved
- * data-retention policy.
+ * There is no plain delete. Erasure anonymises personal data while keeping
+ * order/payment records for accounting (see erase()).
  */
 class CustomerController extends Controller
 {
@@ -83,6 +85,7 @@ class CustomerController extends Controller
             'feedback' => $feedback,
             'summary' => $summary,
             'canManage' => $this->canManage($request),
+            'canErase' => $user->can('customers.erase') || $user->can('admin'),
         ]);
     }
 
@@ -105,6 +108,38 @@ class CustomerController extends Controller
         $logger->log('customers.updated', $record, ['fields' => array_keys($record->getChanges())]);
 
         return back()->with('success', 'Customer updated.');
+    }
+
+    /**
+     * Erase a customer's personal data. Orders and payments are kept as
+     * accounting records but no longer identify the person. Refused while
+     * the customer still owes money.
+     */
+    public function erase(Request $request, int $customer, ActivityLogger $logger): RedirectResponse
+    {
+        $user = $this->authorizeCustomers($request, 'view');
+        abort_unless($user->can('customers.erase') || $user->can('admin'), 403);
+        $request->validate(['confirm' => ['required', 'in:ERASE']], ['confirm.in' => 'Type ERASE to confirm.']);
+
+        DB::transaction(function () use ($user, $customer): void {
+            $record = Customer::query()->where('restaurant_id', $user->restaurant_id)->lockForUpdate()->findOrFail($customer);
+            $owing = $record->orders()->where('status', '!=', 'cancelled')->where('balance', '>', 0)->exists();
+            if ($owing) {
+                throw ValidationException::withMessages(['confirm' => 'This customer has unpaid orders. Settle or cancel them before erasing.']);
+            }
+            $record->forceFill([
+                'name' => 'Erased customer #' . $record->id,
+                'phone' => null, 'email' => null, 'address' => null, 'date_of_birth' => null, 'notes' => null,
+                'loyalty_points' => 0,
+            ])->save();
+            $record->reservations()->update(['guest_name' => 'Erased guest', 'phone' => 'erased', 'special_requests' => null, 'updated_at' => now()]);
+            $record->feedback()->update(['comment' => null, 'updated_at' => now()]);
+            $record->delete();
+        });
+        // Log the identifier only: the point of erasure is not to keep the data.
+        $logger->log('customers.erased', null, ['customer_id' => $customer]);
+
+        return redirect()->route('admin.customers.index')->with('success', 'Customer data erased.');
     }
 
     private function rules(User $user, ?int $ignoreId = null): array

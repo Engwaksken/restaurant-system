@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\LoyaltyService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,49 +66,65 @@ class OrderController extends Controller
         return $this->renderOrders($request, null, 'Order History', 'fas fa-clock-rotate-left', self::FINISHED_STATUSES, true);
     }
 
-    public function show(Order $order): View
+    public function show(Request $request, Order $order): View
     {
         $this->authorizeOrder($order, 'orders.view');
-        $order->loadMissing($this->safeRelations());
+        $order->load(['items', 'branch:id,name', 'customer:id,name,phone,loyalty_points', 'waiter:id,name',
+            'payments.receiver:id,name', 'payments.refunds', 'refunds.refunder:id,name']);
+        $user = $request->user();
 
-        return view('orders.show', compact('order'));
+        return view('orders.show', [
+            'order' => $order,
+            'paymentMethods' => config('restaurant.payment_methods', []),
+            'statusOptions' => Order::STATUS_TRANSITIONS[$order->status] ?? [],
+            'canPay' => $user->can('orders.payments.create') || $user->can('orders.manage') || $user->can('admin'),
+            'canManage' => $user->can('orders.manage') || $user->can('orders.update') || $user->can('admin'),
+            'canRefund' => $user->can('orders.refunds.create') || $user->can('admin'),
+        ]);
     }
 
-    public function updateStatus(Request $request, Order $order): RedirectResponse
+    public function updateStatus(Request $request, Order $order, LoyaltyService $loyalty): RedirectResponse
     {
         $this->authorizeOrder($order, 'orders.update');
         $validated = $request->validate([
             'status' => ['required', 'string', \Illuminate\Validation\Rule::in(['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'])],
         ]);
+        $userId = $request->user()->id;
 
-        if (!Schema::hasColumn('orders', 'status')) {
-            return back()->with('error', 'The orders table does not contain a status column.');
-        }
+        DB::transaction(function () use ($order, $validated, $loyalty, $userId): void {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->canTransitionTo($validated['status']), 422, 'Invalid order status transition.');
+            $locked->status = $validated['status'];
+            if ($validated['status'] === 'completed') {
+                $locked->completed_at ??= now();
+            }
+            $locked->save();
 
-        abort_unless($order->canTransitionTo($validated['status']), 422, 'Invalid order status transition.');
-        $order->status = $validated['status'];
-        $order->save();
+            if ($validated['status'] === 'completed') {
+                $loyalty->earnForOrder($locked, $userId);
+            } elseif ($validated['status'] === 'cancelled') {
+                $loyalty->returnRedeemed($locked, $userId);
+            }
+        });
 
         return back()->with('success', 'Order status updated successfully.');
     }
 
-    public function cancel(Request $request, Order $order): RedirectResponse
+    public function cancel(Request $request, Order $order, LoyaltyService $loyalty): RedirectResponse
     {
         $this->authorizeOrder($order, 'orders.cancel');
-        abort_unless(in_array($order->status, ['pending', 'confirmed', 'preparing', 'ready'], true), 422, 'This order cannot be cancelled.');
         $request->validate([
             'cancellation_reason' => ['nullable', 'string', 'max:1000'],
         ]);
+        $userId = $request->user()->id;
 
-        if (Schema::hasColumn('orders', 'status')) {
-            $order->status = 'cancelled';
-        }
-
-        if (Schema::hasColumn('orders', 'cancellation_reason')) {
-            $order->cancellation_reason = $request->input('cancellation_reason');
-        }
-
-        $order->save();
+        DB::transaction(function () use ($order, $loyalty, $userId): void {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($locked->status, ['pending', 'confirmed', 'preparing', 'ready'], true), 422, 'This order cannot be cancelled.');
+            $locked->status = 'cancelled';
+            $locked->save();
+            $loyalty->returnRedeemed($locked, $userId);
+        });
 
         return back()->with('success', 'Order cancelled successfully.');
     }
@@ -114,7 +132,9 @@ class OrderController extends Controller
     private function authorizeOrder(Order $order, string $ability): void
     {
         $user = auth()->user();
-        abort_unless($user && ($user->can($ability) || $user->can('orders.manage') || $user->can('admin')), 403);
+        // POS operators land on the order they just created, so they may view orders.
+        $posViewer = $ability === 'orders.view' && $user && ($user->can('admin.pos.manage') || $user->can('admin.pos.checkout'));
+        abort_unless($user && ($posViewer || $user->can($ability) || $user->can('orders.manage') || $user->can('admin')), 403);
         if ($user->restaurant_id !== null) {
             $branch = $order->branch;
             abort_unless($branch && (int) $branch->restaurant_id === (int) $user->restaurant_id, 404);

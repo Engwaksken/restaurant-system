@@ -99,26 +99,18 @@ class InventoryController extends Controller
             ->orderBy('inventory_items.name')
             ->get();
 
-        return view('admin.inventory.index', compact('branches', 'categories', 'items', 'activeItems', 'stocks'));
+        $itemIds = $items->pluck('id');
+        $stockedItemIds = DB::table('inventory_stocks')->whereIn('inventory_item_id', $itemIds)->pluck('inventory_item_id')
+            ->merge(DB::table('stock_movements')->whereIn('inventory_item_id', $itemIds)->pluck('inventory_item_id'))
+            ->unique()->values()->all();
+
+        return view('admin.inventory.index', compact('branches', 'categories', 'items', 'activeItems', 'stocks', 'stockedItemIds'));
     }
 
     public function storeItem(Request $request): RedirectResponse
     {
         $restaurantId = $this->authorizeInventory('manage');
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'sku' => ['nullable', 'string', 'max:255', Rule::unique('inventory_items', 'sku')],
-            'inventory_category_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('inventory_categories', 'id')->where('restaurant_id', $restaurantId),
-            ],
-            'purchase_unit' => ['required', 'string', 'max:50'],
-            'usage_unit' => ['required', 'string', 'max:50'],
-            'conversion_factor' => ['required', 'numeric', 'gt:0', 'max:1000000'],
-            'unit_cost' => ['required', 'numeric', 'min:0', 'max:100000000'],
-            'minimum_stock' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
-        ]);
+        $data = $request->validate($this->itemRules($restaurantId));
 
         InventoryItem::create([
             ...$data,
@@ -128,6 +120,33 @@ class InventoryController extends Controller
         ]);
 
         return back()->with('success', 'Inventory item added successfully.');
+    }
+
+    public function updateItem(Request $request, int $item): RedirectResponse
+    {
+        $restaurantId = $this->authorizeInventory('manage');
+        $record = InventoryItem::query()->where('restaurant_id', $restaurantId)->whereKey($item)->firstOrFail();
+        $rules = $this->itemRules($restaurantId, $record->id);
+        if ($this->hasStockHistory($record->id)) {
+            unset($rules['purchase_unit'], $rules['usage_unit'], $rules['conversion_factor']);
+        }
+        $data = $request->validateWithBag('editItem' . $record->id, $rules);
+        $record->update($data);
+
+        return back()->with('success', 'Inventory item updated.');
+    }
+
+    public function destroyItem(int $item): RedirectResponse
+    {
+        $restaurantId = $this->authorizeInventory('manage');
+        $record = InventoryItem::query()->where('restaurant_id', $restaurantId)->whereKey($item)->firstOrFail();
+        $onHand = (float) DB::table('inventory_stocks')->where('inventory_item_id', $record->id)->sum('quantity');
+        if (abs($onHand) > 0.0005) {
+            return back()->with('error', 'This item still has stock on hand. Use a stock adjustment or transfer to bring every branch to zero before deleting it.');
+        }
+        $record->delete();
+
+        return back()->with('success', 'Inventory item deleted.');
     }
 
     public function storeCategory(Request $request): RedirectResponse
@@ -205,6 +224,36 @@ class InventoryController extends Controller
         });
 
         return back()->with('success', 'Stock adjustment recorded.');
+    }
+
+    /** @return array<string, mixed> */
+    private function itemRules(int $restaurantId, ?int $ignoreId = null): array
+    {
+        $skuRule = Rule::unique('inventory_items', 'sku');
+        if ($ignoreId !== null) {
+            $skuRule->ignore($ignoreId);
+        }
+
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'sku' => ['nullable', 'string', 'max:255', $skuRule],
+            'inventory_category_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('inventory_categories', 'id')->where('restaurant_id', $restaurantId),
+            ],
+            'purchase_unit' => ['required', 'string', 'max:50'],
+            'usage_unit' => ['required', 'string', 'max:50'],
+            'conversion_factor' => ['required', 'numeric', 'gt:0', 'max:1000000'],
+            'unit_cost' => ['required', 'numeric', 'min:0', 'max:100000000'],
+            'minimum_stock' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
+        ];
+    }
+
+    private function hasStockHistory(int $itemId): bool
+    {
+        return DB::table('inventory_stocks')->where('inventory_item_id', $itemId)->exists()
+            || DB::table('stock_movements')->where('inventory_item_id', $itemId)->exists();
     }
 
     private function authorizeInventory(string $operation): int

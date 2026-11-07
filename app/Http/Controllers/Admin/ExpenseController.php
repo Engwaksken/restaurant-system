@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Services\ActivityLogger;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,9 +20,7 @@ class ExpenseController extends Controller
     {
         $restaurantId = $this->authorizeExpenses('view');
         $user = $request->user();
-        $expenses = Expense::query()
-            ->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurantId)
-                ->when($user->branch_id, fn ($branches) => $branches->whereKey($user->branch_id)))
+        $expenses = $this->scopedExpenses($request, $restaurantId)
             ->with(['branch:id,name', 'category:id,name'])
             ->latest('expense_date')
             ->latest('id')
@@ -31,14 +31,13 @@ class ExpenseController extends Controller
             ->when($user->branch_id, fn ($query) => $query->whereKey($user->branch_id))
             ->orderBy('name')->get(['id', 'name']);
         $categories = ExpenseCategory::query()->where('restaurant_id', $restaurantId)->orderBy('name')->get(['id', 'name']);
-        $total = (float) Expense::query()
-            ->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurantId)
-                ->when($user->branch_id, fn ($branches) => $branches->whereKey($user->branch_id)))
+        $total = (float) $this->scopedExpenses($request, $restaurantId)
             ->whereMonth('expense_date', now()->month)
             ->whereYear('expense_date', now()->year)
             ->sum('amount');
+        $canManage = $user->can('finance.expenses.manage') || $user->can('admin');
 
-        return view('admin.expenses.index', compact('expenses', 'branches', 'categories', 'total'));
+        return view('admin.expenses.index', compact('expenses', 'branches', 'categories', 'total', 'canManage'));
     }
 
     public function storeCategory(Request $request): RedirectResponse
@@ -52,11 +51,82 @@ class ExpenseController extends Controller
         return back()->with('success', 'Expense category created.');
     }
 
+    public function updateCategory(Request $request, ExpenseCategory $category, ActivityLogger $logger): RedirectResponse
+    {
+        $restaurantId = $this->authorizeExpenses('manage');
+        $record = ExpenseCategory::query()->where('restaurant_id', $restaurantId)->whereKey($category->id)->firstOrFail();
+        $data = $request->validateWithBag('expense-category-' . $record->id, [
+            'name' => ['required', 'string', 'max:255', Rule::unique('expense_categories', 'name')
+                ->where('restaurant_id', $restaurantId)
+                ->ignore($record->id)],
+        ]);
+        $record->update(['name' => $data['name']]);
+        $logger->log('finance.expense_category.updated', $record, ['fields' => array_keys($record->getChanges())]);
+
+        return back()->with('success', 'Expense category updated.');
+    }
+
+    public function destroyCategory(Request $request, ExpenseCategory $category, ActivityLogger $logger): RedirectResponse
+    {
+        $restaurantId = $this->authorizeExpenses('manage');
+        $record = ExpenseCategory::query()->where('restaurant_id', $restaurantId)->whereKey($category->id)->firstOrFail();
+        $used = Expense::withTrashed()->where('expense_category_id', $record->id)->count();
+        if ($used > 0) {
+            return back()->with('error', "This category is used by {$used} expense(s) and cannot be deleted. Rename it instead.");
+        }
+        $name = $record->name;
+        $record->delete();
+        $logger->log('finance.expense_category.deleted', null, ['category_id' => $category->id, 'name' => $name]);
+
+        return back()->with('success', 'Expense category deleted.');
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $restaurantId = $this->authorizeExpenses('create');
         $user = $request->user();
-        $data = $request->validate([
+        $data = $request->validate($this->expenseRules($request, $restaurantId));
+
+        DB::transaction(fn () => Expense::create([...$data, 'created_by' => $user->id]));
+
+        return back()->with('success', 'Expense recorded.');
+    }
+
+    public function update(Request $request, Expense $expense, ActivityLogger $logger): RedirectResponse
+    {
+        $restaurantId = $this->authorizeExpenses('manage');
+        $record = $this->scopedExpenses($request, $restaurantId)->whereKey($expense->id)->firstOrFail();
+        $data = $request->validateWithBag('expense-' . $record->id, $this->expenseRules($request, $restaurantId));
+        $record->update($data);
+        $logger->log('finance.expense.updated', $record, ['fields' => array_keys($record->getChanges())]);
+
+        return back()->with('success', 'Expense updated.');
+    }
+
+    public function destroy(Request $request, Expense $expense, ActivityLogger $logger): RedirectResponse
+    {
+        $restaurantId = $this->authorizeExpenses('manage');
+        $record = $this->scopedExpenses($request, $restaurantId)->whereKey($expense->id)->firstOrFail();
+        $record->delete();
+        $logger->log('finance.expense.deleted', $record, ['branch_id' => $record->branch_id, 'amount' => $record->amount]);
+
+        return back()->with('success', 'Expense deleted.');
+    }
+
+    private function scopedExpenses(Request $request, int $restaurantId): Builder
+    {
+        $user = $request->user();
+
+        return Expense::query()
+            ->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurantId)
+                ->when($user->branch_id, fn ($branches) => $branches->whereKey($user->branch_id)));
+    }
+
+    private function expenseRules(Request $request, int $restaurantId): array
+    {
+        $user = $request->user();
+
+        return [
             'branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->where(fn ($query) => $query
                 ->where('restaurant_id', $restaurantId)
                 ->where('is_active', true)
@@ -67,11 +137,7 @@ class ExpenseController extends Controller
             'amount' => ['required', 'numeric', 'gt:0', 'max:100000000'],
             'payment_method' => ['nullable', Rule::in(['cash', 'mobile_money', 'bank', 'card', 'other'])],
             'expense_date' => ['required', 'date', 'before_or_equal:today'],
-        ]);
-
-        DB::transaction(fn () => Expense::create([...$data, 'created_by' => $user->id]));
-
-        return back()->with('success', 'Expense recorded.');
+        ];
     }
 
     private function authorizeExpenses(string $operation): int

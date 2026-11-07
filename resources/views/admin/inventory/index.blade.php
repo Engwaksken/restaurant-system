@@ -88,8 +88,8 @@
             <div class="panel p-4">
                 <h2 class="h5">Inventory items</h2>
                 <div class="table-responsive"><table class="table table-striped">
-                    <thead><tr><th>Name</th><th>SKU</th><th>Usage unit</th><th>Cost</th><th>Status</th></tr></thead>
-                    <tbody>@forelse($items as $item)<tr><td>{{ $item->name }}</td><td>{{ $item->sku ?? '—' }}</td><td>{{ $item->usage_unit }}</td><td>{{ config('restaurant.currency') }} {{ number_format((float) $item->unit_cost, 2) }}</td><td>{{ $item->deleted_at ? 'Archived' : ($item->is_active ? 'Active' : 'Inactive') }}</td></tr>@empty<tr><td colspan="5" class="text-muted">No inventory items configured.</td></tr>@endforelse</tbody>
+                    <thead><tr><th>Name</th><th>SKU</th><th>Usage unit</th><th>Cost</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody>@forelse($items as $item)<tr><td>{{ $item->name }}</td><td>{{ $item->sku ?? '—' }}</td><td>{{ $item->usage_unit }}</td><td>{{ config('restaurant.currency') }} {{ number_format((float) $item->unit_cost, 2) }}</td><td>{{ $item->deleted_at ? 'Archived' : ($item->is_active ? 'Active' : 'Inactive') }}</td><td class="text-end text-nowrap">@if($item->deleted_at)<span class="text-muted small">Archived</span>@else<button type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#edit-item-{{ $item->id }}" title="Edit {{ $item->name }}" aria-label="Edit {{ $item->name }}"><i class="fas fa-pen"></i></button><button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete-item-{{ $item->id }}" title="Delete {{ $item->name }}" aria-label="Delete {{ $item->name }}"><i class="fas fa-trash"></i></button>@endif</td></tr>@empty<tr><td colspan="6" class="text-muted">No inventory items configured.</td></tr>@endforelse</tbody>
                 </table></div>
                 {{ $items->links() }}
             </div>
@@ -530,6 +530,272 @@
 </div>
 @endif
 
+
+{{-- =========================================================
+     EDIT AND DELETE STOCK ITEM MODALS
+     ONE PER ROW, OUTSIDE THE TABLE
+========================================================= --}}
+@foreach($items as $item)
+    @continue($item->deleted_at)
+    @php
+        $editBagName = 'editItem' . $item->id;
+        $editBag = $errors->getBag($editBagName);
+        $editFailed = $editBag->isNotEmpty();
+        $itemLocked = in_array($item->id, $stockedItemIds, true);
+        $editValue = fn (string $key, $default) => $editFailed ? old($key) : $default;
+        $editPrefix = 'edit-item-' . $item->id;
+    @endphp
+
+    <div class="modal fade"
+         id="edit-item-{{ $item->id }}"
+         tabindex="-1"
+         aria-labelledby="edit-item-{{ $item->id }}-label"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+
+            <form class="modal-content"
+                  method="POST"
+                  action="{{ route('admin.inventory.products.update', $item) }}">
+
+                @csrf
+                @method('PUT')
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-item-{{ $item->id }}-label">
+                        <i class="fas fa-pen me-2 text-primary"></i>
+                        Edit Stock Item
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    @if($editFailed)
+                        <div class="alert alert-danger py-2" role="alert">
+                            <strong>Please correct the following:</strong>
+                            <ul class="mb-0 mt-1 ps-3">
+                                @foreach($editBag->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    @if($itemLocked)
+                        <div class="alert alert-warning py-2" role="alert">
+                            <i class="fas fa-lock me-1"></i>
+                            Purchase unit, recipe usage unit and conversion factor are locked because this item already has stock history. Changing them now would corrupt stock balances.
+                        </div>
+                    @endif
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ $editPrefix }}-name">
+                                Name <span class="text-danger" aria-hidden="true">*</span>
+                            </label>
+                            <input id="{{ $editPrefix }}-name"
+                                   class="form-control @error('name', $editBagName) is-invalid @enderror"
+                                   name="name"
+                                   value="{{ $editValue('name', $item->name) }}"
+                                   placeholder="e.g. Beef fillet"
+                                   required
+                                   maxlength="255">
+                            @error('name', $editBagName)
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ $editPrefix }}-sku">SKU (optional)</label>
+                            <input id="{{ $editPrefix }}-sku"
+                                   class="form-control @error('sku', $editBagName) is-invalid @enderror"
+                                   name="sku"
+                                   value="{{ $editValue('sku', $item->sku) }}"
+                                   placeholder="e.g. BEEF-FIL-01"
+                                   maxlength="255">
+                            @error('sku', $editBagName)
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ $editPrefix }}-category">Category</label>
+                            <select id="{{ $editPrefix }}-category"
+                                    class="form-select @error('inventory_category_id', $editBagName) is-invalid @enderror"
+                                    name="inventory_category_id">
+                                <option value="">Uncategorised</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}"
+                                        @selected((string) $editValue('inventory_category_id', $item->inventory_category_id) === (string) $category->id)>
+                                        {{ $category->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('inventory_category_id', $editBagName)
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label" for="{{ $editPrefix }}-purchase-unit">
+                                Purchase unit <span class="text-danger" aria-hidden="true">*</span>
+                            </label>
+                            <input id="{{ $editPrefix }}-purchase-unit"
+                                   class="form-control @error('purchase_unit', $editBagName) is-invalid @enderror"
+                                   name="purchase_unit"
+                                   value="{{ $editValue('purchase_unit', $item->purchase_unit) }}"
+                                   placeholder="e.g. box"
+                                   @if($itemLocked) readonly @else required @endif
+                                   maxlength="50">
+                            @error('purchase_unit', $editBagName)
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label" for="{{ $editPrefix }}-usage-unit">
+                                Recipe usage unit <span class="text-danger" aria-hidden="true">*</span>
+                            </label>
+                            <input id="{{ $editPrefix }}-usage-unit"
+                                   class="form-control @error('usage_unit', $editBagName) is-invalid @enderror"
+                                   name="usage_unit"
+                                   value="{{ $editValue('usage_unit', $item->usage_unit) }}"
+                                   placeholder="e.g. g"
+                                   @if($itemLocked) readonly @else required @endif
+                                   maxlength="50">
+                            @error('usage_unit', $editBagName)
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ $editPrefix }}-conversion">
+                                Usage units per purchase unit <span class="text-danger" aria-hidden="true">*</span>
+                            </label>
+                            <input id="{{ $editPrefix }}-conversion"
+                                   class="form-control @error('conversion_factor', $editBagName) is-invalid @enderror"
+                                   type="number"
+                                   name="conversion_factor"
+                                   value="{{ $editValue('conversion_factor', (float) $item->conversion_factor) }}"
+                                   min="0.0001"
+                                   step="0.0001"
+                                   placeholder="e.g. 1000"
+                                   @if($itemLocked) readonly @else required @endif>
+                            <small class="text-muted">For example, one 1 kg box is 1000 g.</small>
+                            @error('conversion_factor', $editBagName)
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ $editPrefix }}-unit-cost">
+                                Unit cost <span class="text-danger" aria-hidden="true">*</span>
+                            </label>
+                            <input id="{{ $editPrefix }}-unit-cost"
+                                   class="form-control @error('unit_cost', $editBagName) is-invalid @enderror"
+                                   type="number"
+                                   name="unit_cost"
+                                   value="{{ $editValue('unit_cost', (float) $item->unit_cost) }}"
+                                   min="0"
+                                   step="0.01"
+                                   placeholder="e.g. 5000"
+                                   required>
+                            @error('unit_cost', $editBagName)
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-light"
+                            data-bs-dismiss="modal">
+                        <i class="fas fa-xmark me-1"></i>
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        <i class="fas fa-floppy-disk me-1"></i>
+                        Save Changes
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+    <div class="modal fade"
+         id="delete-item-{{ $item->id }}"
+         tabindex="-1"
+         aria-labelledby="delete-item-{{ $item->id }}-label"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered">
+
+            <form class="modal-content"
+                  method="POST"
+                  action="{{ route('admin.inventory.products.destroy', $item) }}">
+
+                @csrf
+                @method('DELETE')
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="delete-item-{{ $item->id }}-label">
+                        <i class="fas fa-trash me-2 text-danger"></i>
+                        Delete Stock Item
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p class="mb-2">
+                        Remove <strong>{{ $item->name }}</strong> from the inventory list?
+                    </p>
+                    <p class="text-muted small mb-0">
+                        The item is archived rather than erased, so past purchases, sales and stock movements keep their history.
+                        Deletion is refused while any branch still has stock on hand for this item.
+                    </p>
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-light"
+                            data-bs-dismiss="modal">
+                        <i class="fas fa-xmark me-1"></i>
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>
+                        Delete Item
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+@endforeach
+
 @endsection
 
 
@@ -556,6 +822,12 @@ document.addEventListener('DOMContentLoaded', function () {
     @if($adjustFailed)
         openModal('add-stock-adjustment');
     @endif
+
+    @foreach($items as $item)
+        @if(! $item->deleted_at && $errors->getBag('editItem' . $item->id)->isNotEmpty())
+            openModal('edit-item-{{ $item->id }}');
+        @endif
+    @endforeach
 
 });
 </script>

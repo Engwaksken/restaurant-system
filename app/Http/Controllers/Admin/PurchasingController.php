@@ -41,6 +41,41 @@ class PurchasingController extends Controller
         return back()->with('success', 'Supplier added.');
     }
 
+    public function updateSupplier(Request $request, int $supplier): RedirectResponse
+    {
+        $restaurantId = $this->authorizePurchasing($request, 'suppliers.manage');
+        $record = Supplier::query()->where('restaurant_id', $restaurantId)->whereKey($supplier)->firstOrFail();
+        $data = $request->validateWithBag('editSupplier' . $record->id, [
+            'name' => ['required', 'string', 'max:255'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'address' => ['nullable', 'string', 'max:2000'],
+            'tin' => ['nullable', 'string', 'max:100'],
+        ]);
+        $record->update($data);
+
+        return back()->with('success', 'Supplier updated.');
+    }
+
+    public function destroySupplier(Request $request, int $supplier): RedirectResponse
+    {
+        $restaurantId = $this->authorizePurchasing($request, 'suppliers.manage');
+        $record = Supplier::query()->where('restaurant_id', $restaurantId)->whereKey($supplier)->firstOrFail();
+        if (PurchaseOrder::query()->where('supplier_id', $record->id)->whereIn('status', ['ordered', 'partially_received'])->exists()) {
+            return back()->with('error', 'This supplier has open purchase orders. Receive or cancel them before deleting the supplier.');
+        }
+        $hasUnpaidPurchases = Purchase::query()->where('supplier_id', $record->id)
+            ->whereRaw('purchases.total > (select coalesce(sum(supplier_payments.amount), 0) from supplier_payments where supplier_payments.purchase_id = purchases.id)')
+            ->exists();
+        if ($hasUnpaidPurchases) {
+            return back()->with('error', 'This supplier has purchases with an unpaid balance. Settle them before deleting the supplier.');
+        }
+        $record->delete();
+
+        return back()->with('success', 'Supplier deleted.');
+    }
+
     public function purchases(Request $request): View
     {
         $restaurantId = $this->authorizePurchasing($request, 'purchases.view');

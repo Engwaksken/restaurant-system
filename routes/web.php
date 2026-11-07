@@ -298,15 +298,31 @@ Route::middleware('auth')
         Route::get('/inventory/wastage', [WastageController::class, 'index'])->name('inventory.wastage');
         Route::post('/inventory/wastage', [WastageController::class, 'store'])->name('inventory.wastage.store');
         Route::post('/inventory/products', [InventoryController::class, 'storeItem'])->name('inventory.products.store');
+        Route::put('/inventory/products/{item}', [InventoryController::class, 'updateItem'])
+            ->whereNumber('item')->name('inventory.products.update');
+        Route::delete('/inventory/products/{item}', [InventoryController::class, 'destroyItem'])
+            ->whereNumber('item')->name('inventory.products.destroy');
         Route::post('/inventory/categories', [InventoryController::class, 'storeCategory'])->name('inventory.categories.store');
         Route::post('/inventory/stock-adjustments', [InventoryController::class, 'adjustStock'])->name('inventory.stock.adjust');
 
         Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
         Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])
+            ->whereNumber('expense')->name('expenses.update');
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])
+            ->whereNumber('expense')->name('expenses.destroy');
         Route::post('/expense-categories', [ExpenseController::class, 'storeCategory'])->name('expense-categories.store');
+        Route::put('/expense-categories/{category}', [ExpenseController::class, 'updateCategory'])
+            ->whereNumber('category')->name('expense-categories.update');
+        Route::delete('/expense-categories/{category}', [ExpenseController::class, 'destroyCategory'])
+            ->whereNumber('category')->name('expense-categories.destroy');
 
         Route::get('/suppliers', [PurchasingController::class, 'suppliers'])->name('suppliers.index');
         Route::post('/suppliers', [PurchasingController::class, 'storeSupplier'])->name('suppliers.store');
+        Route::put('/suppliers/{supplier}', [PurchasingController::class, 'updateSupplier'])
+            ->whereNumber('supplier')->name('suppliers.update');
+        Route::delete('/suppliers/{supplier}', [PurchasingController::class, 'destroySupplier'])
+            ->whereNumber('supplier')->name('suppliers.destroy');
         Route::get('/purchases', [PurchasingController::class, 'purchases'])->name('purchases.index');
         Route::post('/purchases/receive', [PurchasingController::class, 'receive'])->name('purchases.receive');
         Route::get('/purchase-orders', [PurchasingController::class, 'purchaseOrders'])->name('purchase-orders.index');

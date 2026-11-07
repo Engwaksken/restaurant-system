@@ -4,6 +4,7 @@
 @section('page-title', 'Attendance')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $correctRows = $manages ? collect($records->items()) : collect();
     $activeCorrectId = session()->hasOldInput('clock_in_at') && ! session()->hasOldInput('user_id') && $errors->hasAny(['clock_in_at', 'clock_out_at', 'note']) && $correctRows->count() === 1 ? $correctRows->first()->id : null;

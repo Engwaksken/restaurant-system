@@ -4,6 +4,7 @@
 @section('page-title', 'Branches')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="panel p-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <h2 class="h5 mb-0">Your branches</h2>
@@ -38,6 +39,7 @@
             </div>
         </div>
     @endforeach
+    {{ $branches->links() }}
 </div>
 
 {{-- =========================================================

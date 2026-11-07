@@ -6,6 +6,7 @@
 @section('own-validation-errors', '1')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $failedFields = collect($errors->keys())->map(fn ($key) => explode('.', $key)[0])->unique();
     $itemFailed = $failedFields->intersect(['sku', 'inventory_category_id', 'purchase_unit', 'usage_unit', 'conversion_factor', 'unit_cost', 'minimum_stock'])->isNotEmpty()

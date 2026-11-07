@@ -29,9 +29,18 @@ class BranchController extends Controller
             ->where('restaurant_id', $user->restaurant_id)
             ->withCount(['staff as staff_count' => fn ($query) => $query->where('is_active', true)])
             ->orderByDesc('is_active')->orderBy('name')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.settings.branches', compact('branches'));
+        $all = Branch::query()->where('restaurant_id', $user->restaurant_id);
+        $pageStats = [
+            ['label' => 'Branches', 'value' => number_format((clone $all)->count()), 'icon' => 'fas fa-code-branch', 'tone' => 'brand'],
+            ['label' => 'Active', 'value' => number_format((clone $all)->where('is_active', true)->count()), 'icon' => 'fas fa-circle-check', 'tone' => 'success'],
+            ['label' => 'Inactive', 'value' => number_format((clone $all)->where('is_active', false)->count()), 'icon' => 'fas fa-circle-pause', 'tone' => 'neutral'],
+            ['label' => 'Active staff', 'value' => number_format(User::query()->where('restaurant_id', $user->restaurant_id)->where('is_active', true)->count()), 'icon' => 'fas fa-users', 'tone' => 'info', 'href' => route('admin.staff.index')],
+        ];
+
+        return view('admin.settings.branches', compact('branches', 'pageStats'));
     }
 
     public function store(Request $request, ActivityLogger $logger): RedirectResponse

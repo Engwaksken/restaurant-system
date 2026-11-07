@@ -33,7 +33,15 @@ class RecipeController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'usage_unit']);
 
-        return view('admin.recipes.index', compact('recipes', 'menuItems', 'inventoryItems'));
+        $withRecipe = Recipe::query()->where('restaurant_id', $restaurantId)->distinct()->count('menu_item_id');
+        $pageStats = [
+            ['label' => 'Recipes', 'value' => number_format($recipes->total()), 'icon' => 'fas fa-book', 'tone' => 'brand'],
+            ['label' => 'Stock-tracked dishes', 'value' => number_format($menuItems->count()), 'icon' => 'fas fa-burger', 'tone' => 'info', 'hint' => 'Deduct ingredients when sold'],
+            ['label' => 'Missing a recipe', 'value' => number_format(max(0, $menuItems->count() - $withRecipe)), 'icon' => 'fas fa-circle-exclamation', 'tone' => $menuItems->count() > $withRecipe ? 'warning' : 'success'],
+            ['label' => 'Ingredients available', 'value' => number_format($inventoryItems->count()), 'icon' => 'fas fa-carrot', 'tone' => 'success'],
+        ];
+
+        return view('admin.recipes.index', compact('recipes', 'menuItems', 'inventoryItems', 'pageStats'));
     }
 
     public function store(Request $request): RedirectResponse

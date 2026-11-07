@@ -4,6 +4,7 @@
 @section('page-title', 'Stock Movement Ledger')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="panel p-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
         <h2 class="h5 mb-0">Audited stock movements</h2>

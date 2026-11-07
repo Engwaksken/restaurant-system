@@ -2,6 +2,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Active navigation: highlight the best-matching link and open its group
+    |--------------------------------------------------------------------------
+    */
+
+    (function markActiveNavigation() {
+        const path = window.location.pathname.replace(/\/+$/, '') || '/';
+        let best = null;
+        let bestLength = -1;
+
+        document.querySelectorAll('.sidebar-navigation a[href]').forEach(function (link) {
+            const linkPath = new URL(link.href, window.location.origin).pathname.replace(/\/+$/, '') || '/';
+            const matches = path === linkPath || path.startsWith(linkPath + '/');
+            if (matches && linkPath.length > bestLength) {
+                best = link;
+                bestLength = linkPath.length;
+            }
+        });
+
+        if (!best) {
+            return;
+        }
+
+        best.classList.add('active');
+        best.setAttribute('aria-current', 'page');
+
+        const submenu = best.closest('.sidebar-submenu');
+        if (submenu) {
+            submenu.classList.add('show');
+            const toggle = document.querySelector('[data-sidebar-target="' + submenu.id + '"]');
+            toggle?.classList.add('has-active');
+        }
+
+        best.scrollIntoView({ block: 'nearest' });
+    })();
+
+    /*
+    |--------------------------------------------------------------------------
     | Sidebar Groups
     |--------------------------------------------------------------------------
     */

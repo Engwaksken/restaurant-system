@@ -6,13 +6,13 @@
 
 @section('content')
 @php $currency = config('restaurant.currency'); @endphp
-<p><a href="{{ route('admin.customers.index') }}">← All customers</a></p>
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3"><div class="panel p-3"><small class="text-muted d-block">Orders</small><strong class="fs-4">{{ (int) $summary->orders_count }}</strong></div></div>
-    <div class="col-6 col-md-3"><div class="panel p-3"><small class="text-muted d-block">Total spent</small><strong class="fs-4">{{ $currency }} {{ number_format((float) $summary->total_spent, 2) }}</strong></div></div>
-    <div class="col-6 col-md-3"><div class="panel p-3"><small class="text-muted d-block">Outstanding</small><strong class="fs-4 {{ (float) $summary->outstanding > 0 ? 'text-danger' : '' }}">{{ $currency }} {{ number_format((float) $summary->outstanding, 2) }}</strong></div></div>
-    <div class="col-6 col-md-3"><div class="panel p-3"><small class="text-muted d-block">Loyalty points</small><strong class="fs-4">{{ number_format((int) $customer->loyalty_points) }}</strong></div></div>
-</div>
+<p class="mb-3"><a href="{{ route('admin.customers.index') }}" class="btn btn-sm btn-light"><i class="fas fa-arrow-left me-1"></i>All customers</a></p>
+<x-admin.stats :items="[
+    ['label' => 'Orders', 'value' => number_format((int) $summary->orders_count), 'icon' => 'fas fa-receipt', 'tone' => 'info'],
+    ['label' => 'Total spent', 'value' => $currency . ' ' . number_format((float) $summary->total_spent, 2), 'icon' => 'fas fa-sack-dollar', 'tone' => 'success'],
+    ['label' => 'Outstanding', 'value' => $currency . ' ' . number_format((float) $summary->outstanding, 2), 'icon' => 'fas fa-file-invoice-dollar', 'tone' => (float) $summary->outstanding > 0 ? 'danger' : 'neutral'],
+    ['label' => 'Loyalty points', 'value' => number_format((int) $customer->loyalty_points), 'icon' => 'fas fa-star', 'tone' => 'warning'],
+]" />
 <div class="row g-4">
     <div class="col-lg-4"><div class="panel p-4">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">

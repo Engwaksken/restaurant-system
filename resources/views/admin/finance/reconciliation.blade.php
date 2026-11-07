@@ -8,7 +8,14 @@
     $money = fn ($v) => number_format((float) $v, 2);
     $disputeRows = $canManage ? collect($payments->items()) : collect();
     $activeDisputeId = session()->hasOldInput('status') && $errors->any() && $disputeRows->count() === 1 ? $disputeRows->first()->id : null;
+    $currency = config('restaurant.currency');
 @endphp
+<x-admin.stats :items="[
+    ['label' => 'Non-cash received', 'value' => $currency . ' ' . $money($summary->sum('total')), 'icon' => 'fas fa-money-bill-transfer', 'tone' => 'brand', 'hint' => number_format($summary->sum('payments')) . ' payments · ' . $from->format('j M') . ' – ' . $to->format('j M')],
+    ['label' => 'Matched', 'value' => $currency . ' ' . $money($summary->sum('matched')), 'icon' => 'fas fa-circle-check', 'tone' => 'success'],
+    ['label' => 'Unreconciled', 'value' => $currency . ' ' . $money($summary->sum('unreconciled')), 'icon' => 'fas fa-hourglass-half', 'tone' => 'warning'],
+    ['label' => 'Disputed', 'value' => $currency . ' ' . $money($summary->sum('disputed')), 'icon' => 'fas fa-triangle-exclamation', 'tone' => 'danger'],
+]" />
 <div class="panel p-4 mb-4">
     <form method="GET" class="row g-2 align-items-end">
         <div class="col-6 col-md-2"><label class="form-label" for="recFrom">From</label><input class="form-control" type="date" id="recFrom" name="date_from" value="{{ $from->toDateString() }}"></div>

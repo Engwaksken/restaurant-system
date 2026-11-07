@@ -30,7 +30,18 @@ class WastageController extends Controller
         $items = InventoryItem::query()->where('restaurant_id', $restaurantId)->where('is_active', true)
             ->orderBy('name')->get(['id', 'name', 'usage_unit']);
 
-        return view('admin.inventory.wastage', compact('wastages', 'branches', 'items'));
+        $scope = Wastage::query()->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurantId)
+            ->when($user->branch_id, fn ($branches) => $branches->whereKey($user->branch_id)));
+        $costOf = fn ($query) => (float) $query->get(['quantity', 'unit_cost'])->sum(fn ($row) => (float) $row->quantity * (float) $row->unit_cost);
+        $currency = config('restaurant.currency');
+        $pageStats = [
+            ['label' => 'Wastage cost this month', 'value' => $currency . ' ' . number_format($costOf((clone $scope)->where('wasted_at', '>=', now()->startOfMonth())), 2), 'icon' => 'fas fa-trash-can', 'tone' => 'danger', 'hint' => now()->format('F Y')],
+            ['label' => 'Records this month', 'value' => number_format((clone $scope)->where('wasted_at', '>=', now()->startOfMonth())->count()), 'icon' => 'fas fa-clipboard-list', 'tone' => 'warning'],
+            ['label' => 'Last 7 days cost', 'value' => $currency . ' ' . number_format($costOf((clone $scope)->where('wasted_at', '>=', now()->subDays(7))), 2), 'icon' => 'fas fa-calendar-week', 'tone' => 'info'],
+            ['label' => 'All records', 'value' => number_format($wastages->total()), 'icon' => 'fas fa-database', 'tone' => 'neutral'],
+        ];
+
+        return view('admin.inventory.wastage', compact('wastages', 'branches', 'items', 'pageStats'));
     }
 
     public function store(Request $request, ActivityLogger $logger): RedirectResponse

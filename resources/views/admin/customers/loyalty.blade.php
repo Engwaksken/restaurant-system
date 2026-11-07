@@ -6,21 +6,12 @@
 
 @section('content')
 @php $currency = config('restaurant.currency'); @endphp
-<div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="panel p-3 h-100">
-        <small class="text-muted d-block">Status</small>
-        @if($enabled)<strong class="text-success">Enabled</strong>@else<strong class="text-secondary">Disabled</strong><small class="d-block text-muted">Set <code>LOYALTY_ENABLED=true</code> once the rates below are approved.</small>@endif
-    </div></div>
-    <div class="col-md-4"><div class="panel p-3 h-100 small">
-        <span class="d-block">Earn 1 point per <strong>{{ $currency }} {{ number_format((float) $settings['earn_amount'], 2) }}</strong> net spend on completed orders.</span>
-        <span class="d-block">1 point = <strong>{{ $currency }} {{ number_format((float) $settings['point_value'], 2) }}</strong>; minimum {{ $settings['min_redeem_points'] }} points; up to {{ rtrim(rtrim(number_format((float) $settings['max_redeem_percent'], 2), '0'), '.') }}% of an order.</span>
-    </div></div>
-    <div class="col-md-4"><div class="panel p-3 h-100">
-        <small class="text-muted d-block">Points outstanding</small>
-        <strong class="fs-4">{{ number_format($outstanding) }}</strong>
-        <small class="d-block text-muted">≈ {{ $currency }} {{ number_format($outstanding * (float) $settings['point_value'], 2) }} liability</small>
-    </div></div>
-</div>
+<x-admin.stats :items="[
+    ['label' => 'Programme status', 'value' => $enabled ? 'Enabled' : 'Disabled', 'icon' => 'fas fa-power-off', 'tone' => $enabled ? 'success' : 'neutral', 'hint' => $enabled ? 'Customers are earning points' : 'Set LOYALTY_ENABLED=true once rates are approved'],
+    ['label' => 'Members with points', 'value' => number_format($customers->total()), 'icon' => 'fas fa-users', 'tone' => 'info', 'hint' => 'Customers holding a balance'],
+    ['label' => 'Points outstanding', 'value' => number_format($outstanding), 'icon' => 'fas fa-star', 'tone' => 'warning', 'hint' => '≈ ' . $currency . ' ' . number_format($outstanding * (float) $settings['point_value'], 2) . ' liability'],
+    ['label' => 'Earn rate', 'value' => '1 pt / ' . $currency . ' ' . number_format((float) $settings['earn_amount']), 'icon' => 'fas fa-coins', 'tone' => 'brand', 'hint' => '1 pt = ' . $currency . ' ' . number_format((float) $settings['point_value'], 2) . ' · min ' . $settings['min_redeem_points'] . ' pts · max ' . rtrim(rtrim(number_format((float) $settings['max_redeem_percent'], 2), '0'), '.') . '% of order'],
+]" />
 <div class="row g-4">
     <div class="col-lg-5">
         @if($canAdjust)

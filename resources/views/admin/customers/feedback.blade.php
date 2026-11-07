@@ -4,11 +4,11 @@
 @section('page-title', 'Customer Feedback')
 
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="panel p-3"><small class="text-muted d-block">Responses</small><strong class="fs-4">{{ (int) $summary->responses }}</strong></div></div>
-    <div class="col-md-4"><div class="panel p-3"><small class="text-muted d-block">Average rating</small><strong class="fs-4">{{ $summary->responses ? number_format((float) $summary->average_rating, 1) . ' / 5' : '—' }}</strong></div></div>
-    <div class="col-md-4"><div class="panel p-3"><small class="text-muted d-block">Low ratings (1–2 <i class="fas fa-star"></i>)</small><strong class="fs-4 {{ (int) $summary->low_ratings > 0 ? 'text-danger' : '' }}">{{ (int) $summary->low_ratings }}</strong></div></div>
-</div>
+<x-admin.stats :items="[
+    ['label' => 'Responses', 'value' => number_format((int) $summary->responses), 'icon' => 'fas fa-comments', 'tone' => 'info', 'hint' => 'Feedback received from customers'],
+    ['label' => 'Average rating', 'value' => $summary->responses ? number_format((float) $summary->average_rating, 1) . ' / 5' : '—', 'icon' => 'fas fa-star', 'tone' => 'warning', 'hint' => 'Across all responses in scope'],
+    ['label' => 'Low ratings (1–2 stars)', 'value' => number_format((int) $summary->low_ratings), 'icon' => 'fas fa-face-frown', 'tone' => (int) $summary->low_ratings > 0 ? 'danger' : 'success', 'hint' => (int) $summary->low_ratings > 0 ? 'Follow up with these guests' : 'No unhappy guests'],
+]" />
 <div class="panel p-4">
     <form method="GET" class="row g-2 align-items-end mb-3">
         @if($branches->count() > 1)

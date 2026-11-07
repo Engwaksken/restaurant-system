@@ -47,7 +47,16 @@ class CustomerController extends Controller
             ->paginate(25)
             ->withQueryString();
 
+        $directory = Customer::query()->where('restaurant_id', $user->restaurant_id);
+        $pageStats = [
+            ['label' => 'Customers', 'value' => number_format((clone $directory)->count()), 'icon' => 'fas fa-users', 'tone' => 'brand', 'hint' => 'In your customer directory'],
+            ['label' => 'New this month', 'value' => number_format((clone $directory)->where('created_at', '>=', now()->startOfMonth())->count()), 'icon' => 'fas fa-user-plus', 'tone' => 'success', 'hint' => 'Since ' . now()->startOfMonth()->format('j M')],
+            ['label' => 'Reachable by email', 'value' => number_format((clone $directory)->whereNotNull('email')->where('email', '!=', '')->count()), 'icon' => 'fas fa-envelope', 'tone' => 'info', 'hint' => 'Receive receipts and updates'],
+            ['label' => 'Loyalty points held', 'value' => number_format((int) (clone $directory)->sum('loyalty_points')), 'icon' => 'fas fa-star', 'tone' => 'warning', 'hint' => 'Across all customers'],
+        ];
+
         return view('admin.customers.index', [
+            'pageStats' => $pageStats,
             'customers' => $customers,
             'search' => $search,
             'canManage' => $this->canManage($request),

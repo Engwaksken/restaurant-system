@@ -22,7 +22,9 @@ class PurchasingController extends Controller
         $restaurantId = $this->authorizePurchasing($request, 'suppliers.view');
         $suppliers = Supplier::query()->where('restaurant_id', $restaurantId)->latest()->paginate(25);
 
-        return view('admin.purchasing.suppliers', compact('suppliers'));
+        $pageStats = $this->purchasingStats($restaurantId, $request->user());
+
+        return view('admin.purchasing.suppliers', compact('suppliers', 'pageStats'));
     }
 
     public function storeSupplier(Request $request): RedirectResponse
@@ -90,7 +92,9 @@ class PurchasingController extends Controller
         $suppliers = Supplier::query()->where('restaurant_id', $restaurantId)->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $inventoryItems = InventoryItem::query()->where('restaurant_id', $restaurantId)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'usage_unit']);
 
-        return view('admin.purchasing.purchases', compact('purchases', 'branches', 'suppliers', 'inventoryItems'));
+        $pageStats = $this->purchasingStats($restaurantId, $user);
+
+        return view('admin.purchasing.purchases', compact('purchases', 'branches', 'suppliers', 'inventoryItems', 'pageStats'));
     }
 
     public function purchaseOrders(Request $request): View
@@ -107,7 +111,9 @@ class PurchasingController extends Controller
         $suppliers = Supplier::query()->where('restaurant_id', $restaurantId)->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $inventoryItems = InventoryItem::query()->where('restaurant_id', $restaurantId)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'usage_unit']);
 
-        return view('admin.purchasing.purchase-orders', compact('orders', 'branches', 'suppliers', 'inventoryItems'));
+        $pageStats = $this->purchasingStats($restaurantId, $user);
+
+        return view('admin.purchasing.purchase-orders', compact('orders', 'branches', 'suppliers', 'inventoryItems', 'pageStats'));
     }
 
     public function receivePurchaseOrderForm(Request $request, int $purchaseOrder): View
@@ -383,5 +389,23 @@ class PurchasingController extends Controller
         abort_unless($user->can('purchasing.' . $ability) || $user->can('purchasing.manage') || $user->can('admin'), 403);
 
         return (int) $user->restaurant_id;
+    }
+
+    /** Purchasing headline figures shared by supplier, purchase and PO pages. */
+    private function purchasingStats(int $restaurantId, $user): array
+    {
+        $inScope = fn ($query) => $query->whereHas('branch', fn ($branches) => $branches->where('restaurant_id', $restaurantId)
+            ->when($user->branch_id, fn ($scoped) => $scoped->whereKey($user->branch_id)));
+        $purchaseIds = $inScope(Purchase::query())->select('id');
+        $purchased = (float) $inScope(Purchase::query())->sum('total');
+        $paid = (float) \App\Models\SupplierPayment::query()->whereIn('purchase_id', $purchaseIds)->sum('amount');
+        $currency = config('restaurant.currency');
+
+        return [
+            ['label' => 'Active suppliers', 'value' => number_format(Supplier::query()->where('restaurant_id', $restaurantId)->where('is_active', true)->count()), 'icon' => 'fas fa-truck', 'tone' => 'brand', 'href' => route('admin.suppliers.index')],
+            ['label' => 'Open purchase orders', 'value' => number_format($inScope(PurchaseOrder::query())->whereIn('status', ['ordered', 'partially_received'])->count()), 'icon' => 'fas fa-file-circle-plus', 'tone' => 'info', 'href' => route('admin.purchase-orders.index')],
+            ['label' => 'Received this month', 'value' => $currency . ' ' . number_format((float) $inScope(Purchase::query())->where('received_at', '>=', now()->startOfMonth())->sum('total'), 2), 'icon' => 'fas fa-cart-shopping', 'tone' => 'success', 'href' => route('admin.purchases.index')],
+            ['label' => 'Owed to suppliers', 'value' => $currency . ' ' . number_format(max(0, $purchased - $paid), 2), 'icon' => 'fas fa-file-invoice-dollar', 'tone' => $purchased - $paid > 0 ? 'warning' : 'neutral', 'hint' => 'Unpaid purchase balances'],
+        ];
     }
 }

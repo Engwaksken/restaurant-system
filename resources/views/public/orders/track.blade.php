@@ -1,15 +1,12 @@
+@php($brand = \App\Support\Brand::for($order->branch?->restaurant))
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="referrer" content="no-referrer">
-    <title>Track order · {{ $order->branch?->restaurant?->name ?? 'Restaurant' }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
     @include('public.orders.partials.styles')
+    <meta name="referrer" content="no-referrer">
+    <title>Track order · {{ $brand->name() }}</title>
 </head>
-<body>
+<body class="order-hero">
 
 @include('public.orders.partials.brand')
 
@@ -52,7 +49,7 @@
                     @foreach($order->items as $item)
                         <li class="d-flex justify-content-between gap-3 py-2 border-bottom small">
                             <span>{{ $item->quantity }} × {{ $item->item_name }}</span>
-                            <span class="text-nowrap">{{ config('restaurant.currency') }} {{ number_format((float) $item->total, 2) }}</span>
+                            <span class="text-nowrap">{{ $brand->currency() }} {{ number_format((float) $item->total, 2) }}</span>
                         </li>
                     @endforeach
                 </ul>
@@ -63,14 +60,20 @@
             <section class="card order-card p-4 mb-4">
                 <div class="d-flex justify-content-between small mb-2">
                     <span class="text-muted">Total</span>
-                    <span class="fw-semibold">{{ config('restaurant.currency') }} {{ number_format((float) $order->total, 2) }}</span>
+                    <span class="fw-semibold">{{ $brand->currency() }} {{ number_format((float) $order->total, 2) }}</span>
                 </div>
                 <div class="d-flex justify-content-between small mb-2">
                     <span class="text-muted">Amount due</span>
                     <span class="fw-semibold {{ (float) $order->balance > 0 ? 'text-danger' : 'text-success' }}">
-                        {{ config('restaurant.currency') }} {{ number_format((float) $order->balance, 2) }}
+                        {{ $brand->currency() }} {{ number_format((float) $order->balance, 2) }}
                     </span>
                 </div>
+                @if($order->payment_preference)
+                    <div class="d-flex justify-content-between small mb-2">
+                        <span class="text-muted">Payment method</span>
+                        <span>{{ $order->payment_preference === 'cash_on_delivery' ? 'Pay on delivery or pickup' : ucfirst($order->payment_preference) }}</span>
+                    </div>
+                @endif
 
                 @if((float) $order->balance > 0 && $gateways !== [] && filter_var($order->customer?->email, FILTER_VALIDATE_EMAIL))
                     <div class="mt-3">

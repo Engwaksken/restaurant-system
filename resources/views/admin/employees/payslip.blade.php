@@ -5,15 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Payslip · {{ $line->employee_name }} · {{ $run->period_start->format('F Y') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>@media print { .no-print { display: none; } }</style>
+    @if($brand->faviconUrl())<link rel="icon" href="{{ $brand->faviconUrl() }}">@endif
+    <style>
+        body { font-family: "Inter", system-ui, sans-serif; }
+        .slip-header { border-bottom: 4px solid {{ $brand->primary() }}; }
+        .slip-logo { height: 48px; width: auto; border-radius: 8px; }
+        .table thead th, .table .fw-bold td { color: {{ $brand->accent() }}; }
+        @media print { .no-print { display: none; } }
+    </style>
 </head>
 <body class="bg-white">
 @php $money = fn ($v) => config('restaurant.currency') . ' ' . number_format((float) $v, 2); @endphp
 <main class="container py-4" style="max-width: 720px">
-    <div class="d-flex justify-content-between align-items-start mb-4">
-        <div>
-            <h1 class="h4 mb-0">{{ $run->branch?->restaurant?->name }}</h1>
+    <div class="d-flex justify-content-between align-items-start mb-4 pb-3 slip-header">
+        <div class="d-flex align-items-center gap-3">
+            @if($brand->logoUrl())<img src="{{ $brand->logoUrl() }}" alt="" class="slip-logo">@endif
+            <div>
+            <h1 class="h4 mb-0">{{ $run->branch?->restaurant?->name ?? $brand->name() }}</h1>
             <span class="text-muted">{{ $run->branch?->name }}</span>
+            </div>
         </div>
         <div class="text-end">
             <h2 class="h5 mb-0">Payslip</h2>

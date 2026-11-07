@@ -38,7 +38,18 @@ class MenuOptionController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $model = self::TYPES[$type]['model'];
+        $options = $model::query()->whereHas('menuItem', fn ($query) => $query->where('restaurant_id', $restaurantId));
+        $label = self::TYPES[$type]['label'];
+        $pageStats = [
+            ['label' => \Illuminate\Support\Str::plural($label), 'value' => number_format((clone $options)->count()), 'icon' => $type === 'variants' ? 'fas fa-code-branch' : 'fas fa-circle-plus', 'tone' => 'brand'],
+            ['label' => 'Available', 'value' => number_format((clone $options)->where('is_available', true)->count()), 'icon' => 'fas fa-circle-check', 'tone' => 'success'],
+            ['label' => 'Items using ' . strtolower(\Illuminate\Support\Str::plural($label)), 'value' => number_format((clone $options)->distinct()->count('menu_item_id')), 'icon' => 'fas fa-burger', 'tone' => 'info'],
+            ['label' => 'Average price', 'value' => config('restaurant.currency') . ' ' . number_format((float) (clone $options)->avg('price'), 2), 'icon' => 'fas fa-tag', 'tone' => 'violet'],
+        ];
+
         return view('admin.menu-options.index', [
+            'pageStats' => $pageStats,
             'items' => $items,
             'type' => $type,
             'label' => self::TYPES[$type]['label'],

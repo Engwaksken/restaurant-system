@@ -5,12 +5,13 @@
 @section('own-validation-errors', '1')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="row g-4">
     <div class="col-12">
         <div class="panel p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <div>
-                <span class="text-muted">Expenses this month</span>
-                <div class="h3 mb-0">{{ config('restaurant.currency') }} {{ number_format($total, 2) }}</div>
+                <h2 class="h5 mb-1">Expense register</h2>
+                <span class="text-muted small">Record running costs and keep spend under control.</span>
                 @if($branches->isEmpty())<p class="text-muted small mt-2 mb-0">No active branch is assigned to your account.</p>@endif
             </div>
             <div class="d-flex flex-wrap gap-2">

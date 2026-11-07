@@ -19,65 +19,12 @@
     @endif
 
     {{-- Statistics --}}
-    <div class="row g-3 mb-3">
-
-        <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <div class="menu-stat-icon bg-primary-subtle text-primary">
-                        <i class="{{ $pageIcon }}"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Total Orders</small>
-                        <strong class="fs-5">{{ number_format($statistics['total']) }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <div class="menu-stat-icon bg-warning-subtle text-warning">
-                        <i class="fas fa-hourglass-half"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Pending</small>
-                        <strong class="fs-5">{{ number_format($statistics['pending']) }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <div class="menu-stat-icon bg-info-subtle text-info">
-                        <i class="fas fa-fire-burner"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Preparing</small>
-                        <strong class="fs-5">{{ number_format($statistics['preparing']) }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body py-3 d-flex align-items-center gap-3">
-                    <div class="menu-stat-icon bg-success-subtle text-success">
-                        <i class="fas fa-circle-check"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Completed</small>
-                        <strong class="fs-5">{{ number_format($statistics['completed']) }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
+    <x-admin.stats :items="[
+        ['label' => 'Total orders', 'value' => number_format($statistics['total']), 'icon' => $pageIcon, 'tone' => 'brand'],
+        ['label' => 'Pending', 'value' => number_format($statistics['pending']), 'icon' => 'fas fa-hourglass-half', 'tone' => 'warning'],
+        ['label' => 'Preparing', 'value' => number_format($statistics['preparing']), 'icon' => 'fas fa-fire-burner', 'tone' => 'info'],
+        ['label' => 'Completed', 'value' => number_format($statistics['completed']), 'icon' => 'fas fa-circle-check', 'tone' => 'success'],
+    ]" />
 
     <div class="card border-0 shadow-sm">
 

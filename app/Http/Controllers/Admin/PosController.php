@@ -193,7 +193,15 @@ class PosController extends Controller
             ->latest('id')
             ->paginate(25);
 
-        return view('pos.held', ['held' => $held]);
+        $scope = $this->whereUserBranch(HeldOrder::query(), $user);
+        $pageStats = [
+            ['label' => 'Orders on hold', 'value' => number_format($held->total()), 'icon' => 'fas fa-pause', 'tone' => 'brand'],
+            ['label' => 'Held today', 'value' => number_format((clone $scope)->where('created_at', '>=', now()->startOfDay())->count()), 'icon' => 'fas fa-calendar-day', 'tone' => 'info'],
+            ['label' => 'Held by you', 'value' => number_format((clone $scope)->where('user_id', $user->id)->count()), 'icon' => 'fas fa-user', 'tone' => 'success'],
+            ['label' => 'Older than a day', 'value' => number_format((clone $scope)->where('created_at', '<', now()->subDay())->count()), 'icon' => 'fas fa-clock-rotate-left', 'tone' => 'warning', 'hint' => 'Consider resuming or discarding'],
+        ];
+
+        return view('pos.held', ['held' => $held, 'pageStats' => $pageStats]);
     }
 
     public function discardHeld(Request $request, int $held, ActivityLogger $logger): RedirectResponse

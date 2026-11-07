@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MenuItemController extends Controller
@@ -126,11 +127,7 @@ class MenuItemController extends Controller
         */
 
         if ($request->hasFile('image')) {
-            $validated['image_path'] =
-                $request->file('image')->store(
-                    'menu-items',
-                    'public'
-                );
+            $validated['image_path'] = $this->storeMenuImage($request);
         }
 
         unset($validated['image']);
@@ -222,21 +219,13 @@ class MenuItemController extends Controller
         */
 
         if ($request->hasFile('image')) {
+            // Store first so an upload failure never removes the existing image.
+            $newImagePath = $this->storeMenuImage($request);
+            $validated['image_path'] = $newImagePath;
 
-            if (
-                $menuItem->image_path
-                && Storage::disk('public')
-                    ->exists($menuItem->image_path)
-            ) {
-                Storage::disk('public')
-                    ->delete($menuItem->image_path);
+            if ($menuItem->image_path && $menuItem->image_path !== $newImagePath) {
+                Storage::disk('public')->delete($this->normaliseImagePath($menuItem->image_path));
             }
-
-            $validated['image_path'] =
-                $request->file('image')->store(
-                    'menu-items',
-                    'public'
-                );
         }
 
         unset($validated['image']);
@@ -412,6 +401,32 @@ class MenuItemController extends Controller
                 'max:4096',
             ],
         ]);
+    }
+
+    private function storeMenuImage(Request $request): string
+    {
+        $path = $request->file('image')?->storePublicly('menu-items', 'public');
+
+        if (!is_string($path) || $path === '') {
+            throw ValidationException::withMessages([
+                'image' => 'The image could not be saved. Check that public storage is writable and try again.',
+            ]);
+        }
+
+        return $path;
+    }
+
+    private function normaliseImagePath(string $path): string
+    {
+        $path = ltrim($path, '/');
+
+        foreach (['storage/', 'public/'] as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return substr($path, strlen($prefix));
+            }
+        }
+
+        return $path;
     }
 
     private function authorizeMenu(string $operation): int

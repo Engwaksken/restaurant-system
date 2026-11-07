@@ -58,6 +58,13 @@ class ActivityLogController extends Controller
 
         $staff = User::query()->where('restaurant_id', $restaurantId)->orderBy('name')->get(['id', 'name']);
 
-        return view('admin.activity-logs.index', compact('logs', 'areas', 'staff', 'filters'));
+        $pageStats = [
+            ['label' => 'Events today', 'value' => number_format((clone $scoped)->where('created_at', '>=', now()->startOfDay())->count()), 'icon' => 'fas fa-bolt', 'tone' => 'brand'],
+            ['label' => 'Last 7 days', 'value' => number_format((clone $scoped)->where('created_at', '>=', now()->subDays(7))->count()), 'icon' => 'fas fa-calendar-week', 'tone' => 'info'],
+            ['label' => 'Active users today', 'value' => number_format((clone $scoped)->where('created_at', '>=', now()->startOfDay())->whereNotNull('user_id')->distinct()->count('user_id')), 'icon' => 'fas fa-user-clock', 'tone' => 'success'],
+            ['label' => 'Matching filters', 'value' => number_format($logs->total()), 'icon' => 'fas fa-filter', 'tone' => 'neutral'],
+        ];
+
+        return view('admin.activity-logs.index', compact('logs', 'areas', 'staff', 'filters', 'pageStats'));
     }
 }

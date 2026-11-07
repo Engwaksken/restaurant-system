@@ -44,11 +44,25 @@ class HomeController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $paymentGateways = collect(config('restaurant.gateways', []))
+            ->filter(fn (array $gateway, string $name): bool =>
+                ($gateway['enabled'] ?? false)
+                && !empty($gateway['base_url'])
+                && ($name === 'flutterwave'
+                    ? !empty($gateway['secret_key'])
+                    : !empty($gateway['consumer_key'])
+                        && !empty($gateway['consumer_secret'])
+                        && !empty($gateway['notification_id']))
+            )
+            ->map(fn (array $gateway, string $name): string => ucfirst($name))
+            ->all();
+
         return view('public.home', compact(
             'categories',
             'menuItems',
             'branches',
-            'restaurant'
+            'restaurant',
+            'paymentGateways'
         ));
     }
 }

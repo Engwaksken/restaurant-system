@@ -785,6 +785,7 @@ class AdminTenantSecurityTest extends TestCase
         $this->post(route('order.store'), [
             'name' => 'Another Customer',
             'phone' => '+15555550124',
+            'payment_option' => 'cash_on_delivery',
             'branch_id' => $branch->id,
             'items' => [['menu_item_id' => $foreignItem->id, 'quantity' => 1]],
         ])->assertSessionHasErrors('items.0.menu_item_id');
@@ -793,6 +794,7 @@ class AdminTenantSecurityTest extends TestCase
             'name' => 'Test Customer',
             'phone' => '+15555550123',
             'email' => 'customer@example.test',
+            'payment_option' => 'cash_on_delivery',
             'branch_id' => $branch->id,
             'items' => [['menu_item_id' => $item->id, 'quantity' => 2]],
         ]);

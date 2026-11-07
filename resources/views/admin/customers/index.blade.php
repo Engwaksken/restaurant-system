@@ -5,6 +5,7 @@
 @section('own-validation-errors', '1')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="row g-4">
     <div class="col-12"><div class="panel p-4">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">

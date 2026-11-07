@@ -4,6 +4,7 @@
 @section('page-title', 'Staff Permissions')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="panel p-4">
     <p class="text-muted">Permissions apply within your restaurant. Branch restrictions continue to apply. Wildcard administrators and tenant assignments are intentionally managed outside this screen.</p>
     @forelse($users as $staff)

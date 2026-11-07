@@ -38,7 +38,16 @@ class StaffController extends Controller
         $wildcardIds = DB::table('user_permissions')->where('ability', 'admin')
             ->whereIn('user_id', $staff->pluck('id'))->pluck('user_id')->all();
 
+        $team = $this->manageableStaff($user);
+        $pageStats = [
+            ['label' => 'Active staff', 'value' => number_format((clone $team)->where('is_active', true)->count()), 'icon' => 'fas fa-user-check', 'tone' => 'success', 'hint' => 'Can sign in today'],
+            ['label' => 'Deactivated', 'value' => number_format((clone $team)->where('is_active', false)->count()), 'icon' => 'fas fa-user-slash', 'tone' => 'neutral', 'hint' => 'History kept for audit'],
+            ['label' => 'Restaurant-wide', 'value' => number_format((clone $team)->whereNull('branch_id')->where('is_active', true)->count()), 'icon' => 'fas fa-building', 'tone' => 'info', 'hint' => 'Not tied to one branch'],
+            ['label' => 'Branches', 'value' => number_format($this->userBranches($user)->count()), 'icon' => 'fas fa-code-branch', 'tone' => 'violet', 'hint' => 'Active locations'],
+        ];
+
         return view('admin.employees.staff', [
+            'pageStats' => $pageStats,
             'staff' => $staff,
             'branches' => $this->userBranches($user),
             'wildcardIds' => $wildcardIds,

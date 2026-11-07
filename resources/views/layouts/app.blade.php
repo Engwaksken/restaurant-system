@@ -2,44 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="{{ $brand->accent() }}">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1">
+    <title>@yield('title', 'Dashboard') · {{ $brand->name() }}</title>
 
-    <meta name="csrf-token"
-          content="{{ csrf_token() }}">
+    @if($brand->faviconUrl())
+        <link rel="icon" href="{{ $brand->faviconUrl() }}">
+        <link rel="apple-touch-icon" href="{{ $brand->faviconUrl() }}">
+    @else
+        <link rel="icon" href="{{ asset('favicon.ico') }}">
+    @endif
 
-    <title>
-        @yield('title', 'Dashboard') -
-        {{ config('restaurant.name', 'Kemmy Restaurant') }}
-    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    {{-- Font --}}
-    <link rel="preconnect"
-          href="https://fonts.googleapis.com">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <link href="{{ asset('css/restaurant-admin.css') }}?v={{ @filemtime(public_path('css/restaurant-admin.css')) }}" rel="stylesheet">
 
-    <link rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossorigin>
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
-
-    {{-- Bootstrap --}}
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet">
-
-    {{-- Font Awesome --}}
-    <link
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-        rel="stylesheet">
-
-    {{-- Admin CSS --}}
-    <link
-        href="{{ asset('css/restaurant-admin.css') }}?v={{ @filemtime(public_path('css/restaurant-admin.css')) }}"
-        rel="stylesheet">
+    <style>:root{ {!! $brand->cssVariables() !!} }</style>
 
     @stack('styles')
 </head>
@@ -63,27 +47,17 @@
 
         <div class="sidebar-header">
 
-            <a href="{{ url('/admin/dashboard') }}"
-               class="sidebar-brand">
-
-                <span class="sidebar-brand-icon">
-                    <i class="fas fa-utensils"></i>
-                </span>
-
+            <a href="{{ url('/admin/dashboard') }}" class="sidebar-brand">
+                @if($brand->logoUrl())
+                    <span class="sidebar-brand-logo"><img src="{{ $brand->logoUrl() }}" alt=""></span>
+                @else
+                    <span class="sidebar-brand-icon">{{ $brand->initials() }}</span>
+                @endif
                 <span class="sidebar-brand-content">
-
-                    <strong>
-                        {{ config('restaurant.name', 'Kemmy Restaurant') }}
-                    </strong>
-
-                    <small>
-                        Restaurant Management
-                    </small>
-
+                    <strong>{{ $brand->name() }}</strong>
+                    <small>{{ $brand->tagline() ?? 'Restaurant Management' }}</small>
                 </span>
-
             </a>
-
 
             <button type="button"
                     class="sidebar-close d-lg-none"
@@ -714,8 +688,8 @@
                  id="sidebarSettings">
 
                 <a href="{{ url('/admin/settings/restaurant') }}">
-                    <i class="fas fa-store"></i>
-                    Restaurant
+                    <i class="fas fa-palette"></i>
+                    Restaurant &amp; Branding
                 </a>
 
                 <a href="{{ url('/admin/settings/branches') }}">
@@ -791,62 +765,56 @@
     <main class="admin-main">
 
         <header class="admin-topbar">
-
             <div class="topbar-left">
-
-                <button type="button"
-                        class="mobile-sidebar-button d-lg-none"
-                        id="sidebarOpen">
-
+                <button type="button" class="mobile-sidebar-button d-lg-none" id="sidebarOpen" aria-label="Open navigation">
                     <i class="fas fa-bars"></i>
-
                 </button>
-
-
-                <div>
-                    <h1>
-                        @yield('page-title', 'Dashboard')
-                    </h1>
+                <div class="topbar-heading">
+                    <h1>@yield('page-title', 'Dashboard')</h1>
+                    <small class="d-none d-sm-block">@hasSection('page-subtitle')@yield('page-subtitle')@else{{ now()->format('l, j F Y') }}@endif</small>
                 </div>
-
             </div>
-
 
             <div class="topbar-right">
-
-                <a href="{{ url('/') }}"
-                   target="_blank"
-                   class="topbar-button"
-                   title="View restaurant">
-
-                    <i class="fas fa-globe"></i>
-
+                @if(Route::has('admin.pos.index'))
+                    <a href="{{ route('admin.pos.index') }}" class="btn btn-primary btn-sm d-none d-md-inline-flex align-items-center gap-2 topbar-cta">
+                        <i class="fas fa-cash-register"></i> New sale
+                    </a>
+                @endif
+                <a href="{{ url('/') }}" target="_blank" rel="noopener" class="topbar-button" title="View website" aria-label="View website">
+                    <i class="fas fa-arrow-up-right-from-square"></i>
+                </a>
+                <a href="{{ url('/admin/notifications') }}" class="topbar-button" title="Notifications" aria-label="Notifications">
+                    <i class="fas fa-bell"></i>
                 </a>
 
-
-                <button type="button"
-                        class="topbar-button"
-                        title="Notifications">
-
-                    <i class="fas fa-bell"></i>
-
-                </button>
-
-
-                <div class="user-summary">
-
-                    <span class="user-avatar">
-                        {{ strtoupper(substr(auth()->user()?->name ?? 'A', 0, 1)) }}
-                    </span>
-
-                    <span class="user-name d-none d-md-inline">
-                        {{ auth()->user()?->name ?? 'Administrator' }}
-                    </span>
-
+                <div class="dropdown">
+                    <button type="button" class="user-summary" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="user-avatar">{{ strtoupper(substr(auth()->user()?->name ?? 'A', 0, 1)) }}</span>
+                        <span class="user-meta d-none d-md-flex">
+                            <span class="user-name">{{ auth()->user()?->name ?? 'Administrator' }}</span>
+                            <span class="user-role">{{ auth()->user()?->branch?->name ?? 'All branches' }}</span>
+                        </span>
+                        <i class="fas fa-chevron-down small text-muted d-none d-md-inline"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm user-dropdown">
+                        <li class="px-3 py-2">
+                            <div class="fw-semibold">{{ auth()->user()?->name }}</div>
+                            <div class="small text-muted text-truncate">{{ auth()->user()?->email }}</div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url('/admin/settings/restaurant') }}"><i class="fas fa-palette me-2"></i>Branding</a></li>
+                        <li><a class="dropdown-item" href="{{ url('/') }}" target="_blank" rel="noopener"><i class="fas fa-globe me-2"></i>View website</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="{{ route('admin.logout') }}">
+                                @csrf
+                                <button type="submit" class="dropdown-item text-danger"><i class="fas fa-right-from-bracket me-2"></i>Sign out</button>
+                            </form>
+                        </li>
+                    </ul>
                 </div>
-
             </div>
-
         </header>
 
 
@@ -922,6 +890,11 @@
             @yield('content')
 
         </div>
+
+        <footer class="admin-footer">
+            <span>&copy; {{ now()->year }} {{ $brand->name() }}</span>
+            <span class="d-none d-sm-inline">Restaurant Management System</span>
+        </footer>
 
     </main>
 
@@ -1013,7 +986,7 @@
             <div>
 
                 <strong>
-                    Restaurant Assistant
+                    {{ $brand->name() }} Assistant
                 </strong>
 
                 <small>

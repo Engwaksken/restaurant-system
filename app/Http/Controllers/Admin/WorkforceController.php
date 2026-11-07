@@ -56,7 +56,17 @@ class WorkforceController extends Controller
             ->latest('clock_in_at')
             ->paginate(50)->withQueryString();
 
+        $scope = $this->whereUserBranch(Attendance::query(), $user)->when(!$manages, fn ($query) => $query->where('user_id', $user->id));
+        $periodHours = round((clone $scope)->whereBetween('clock_in_at', [$from, $to])->get(['clock_in_at', 'clock_out_at'])->sum(fn (Attendance $a) => $a->hours()), 1);
+        $pageStats = [
+            ['label' => $manages ? 'On shift now' : 'Your status', 'value' => $manages ? number_format((clone $scope)->whereNull('clock_out_at')->count()) : (Attendance::query()->where('user_id', $user->id)->whereNull('clock_out_at')->exists() ? 'Clocked in' : 'Clocked out'), 'icon' => 'fas fa-user-clock', 'tone' => 'success'],
+            ['label' => 'Clock-ins today', 'value' => number_format((clone $scope)->where('clock_in_at', '>=', now()->startOfDay())->count()), 'icon' => 'fas fa-right-to-bracket', 'tone' => 'info'],
+            ['label' => 'Hours in period', 'value' => number_format($periodHours, 1) . ' h', 'icon' => 'fas fa-hourglass-half', 'tone' => 'brand', 'hint' => $from->format('j M') . ' – ' . $to->format('j M')],
+            ['label' => 'Records in period', 'value' => number_format($records->total()), 'icon' => 'fas fa-list-check', 'tone' => 'neutral'],
+        ];
+
         return view('admin.employees.attendance', [
+            'pageStats' => $pageStats,
             'records' => $records,
             'open' => Attendance::query()->where('user_id', $user->id)->whereNull('clock_out_at')->with('branch:id,name')->first(),
             'manages' => $manages,
@@ -156,7 +166,16 @@ class WorkforceController extends Controller
             ->orderBy('starts_at')
             ->get();
 
+        $hours = round($shifts->sum(fn ($shift) => $shift->starts_at->diffInMinutes($shift->ends_at) / 60), 1);
+        $pageStats = [
+            ['label' => 'Shifts this week', 'value' => number_format($shifts->count()), 'icon' => 'fas fa-calendar-days', 'tone' => 'brand', 'hint' => $week->format('j M') . ' – ' . $week->copy()->endOfWeek()->format('j M')],
+            ['label' => 'Scheduled hours', 'value' => number_format($hours, 1) . ' h', 'icon' => 'fas fa-clock', 'tone' => 'info'],
+            ['label' => 'Staff rostered', 'value' => number_format($shifts->pluck('user_id')->unique()->count()), 'icon' => 'fas fa-users', 'tone' => 'success'],
+            ['label' => 'Shifts today', 'value' => number_format($shifts->filter(fn ($shift) => $shift->starts_at->isToday())->count()), 'icon' => 'fas fa-calendar-day', 'tone' => 'warning'],
+        ];
+
         return view('admin.employees.shifts', [
+            'pageStats' => $pageStats,
             'shifts' => $shifts,
             'days' => collect(range(0, 6))->map(fn (int $offset) => $week->copy()->addDays($offset)),
             'week' => $week,

@@ -60,6 +60,7 @@ class KitchenController extends Controller
         }
 
         return view('admin.kitchen.board', [
+            'pageStats' => $this->kitchenStats($request),
             'columns' => $columns,
             'canManage' => $this->canManage($request),
             'transitions' => self::KITCHEN_TRANSITIONS,
@@ -99,6 +100,7 @@ class KitchenController extends Controller
             ->withQueryString();
 
         return view('admin.kitchen.queue', [
+            'pageStats' => $this->kitchenStats($request),
             'orders' => $orders,
             'queue' => 'completed',
             'title' => 'Completed Today',
@@ -173,6 +175,7 @@ class KitchenController extends Controller
             ->withQueryString();
 
         return view('admin.kitchen.queue', [
+            'pageStats' => $this->kitchenStats($request),
             'orders' => $orders,
             'queue' => $queue,
             'title' => $title,
@@ -206,5 +209,27 @@ class KitchenController extends Controller
         $user = $request->user();
 
         return (bool) $user && ($user->can('kitchen.manage') || $user->can('orders.manage') || $user->can('admin'));
+    }
+
+    /** Live queue counts shown above every kitchen screen. */
+    private function kitchenStats(Request $request): array
+    {
+        $late = (int) config('restaurant.kitchen_late_minutes', 20);
+        $count = fn (array $statuses) => $this->scopedOrders($request)->whereIn('status', $statuses)->count();
+        $lateCount = $this->scopedOrders($request)
+            ->whereIn('status', array_merge(self::QUEUES['pending'], self::QUEUES['preparing']))
+            ->whereRaw('COALESCE(ordered_at, created_at) <= ?', [now()->subMinutes($late)])
+            ->count();
+        $done = $this->scopedOrders($request)->whereIn('status', ['served', 'completed'])
+            ->where(fn (Builder $query) => $query->where('completed_at', '>=', now()->startOfDay())
+                ->orWhere(fn (Builder $fallback) => $fallback->whereNull('completed_at')->where('updated_at', '>=', now()->startOfDay())))
+            ->count();
+
+        return [
+            ['label' => 'New', 'value' => number_format($count(self::QUEUES['pending'])), 'icon' => 'fas fa-hourglass-start', 'tone' => 'warning', 'href' => route('admin.kitchen.pending')],
+            ['label' => 'Preparing', 'value' => number_format($count(self::QUEUES['preparing'])), 'icon' => 'fas fa-fire', 'tone' => 'brand', 'href' => route('admin.kitchen.preparing'), 'hint' => $lateCount > 0 ? $lateCount . ' running late (>' . $late . ' min)' : 'Nothing running late'],
+            ['label' => 'Ready to serve', 'value' => number_format($count(self::QUEUES['ready'])), 'icon' => 'fas fa-bell-concierge', 'tone' => 'info', 'href' => route('admin.kitchen.ready')],
+            ['label' => 'Completed today', 'value' => number_format($done), 'icon' => 'fas fa-circle-check', 'tone' => 'success', 'href' => route('admin.kitchen.completed')],
+        ];
     }
 }

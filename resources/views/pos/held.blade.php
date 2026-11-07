@@ -4,6 +4,7 @@
 @section('page-title', 'Held Orders')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="panel p-4">
     <p class="small text-muted">Held orders are not sent to the kitchen and do not use stock. Prices are recalculated when an order is resumed and created.</p>
     <div class="table-responsive"><table class="table align-middle">

@@ -4,6 +4,7 @@
 @section('page-title', 'Menu Availability')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="panel p-4">
     <p class="text-muted">
         Unavailable items cannot be ordered at the POS or online.

@@ -4,13 +4,13 @@
 @section('page-title', 'Returns / Refunds')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 <div class="panel p-4">
     <p class="text-muted small">Refunds are issued from an order's detail page against a specific payment. Food is not returned to stock.</p>
     <form method="GET" class="row g-2 align-items-end mb-3">
         <div class="col-auto"><label class="form-label" for="refundFrom">From</label><input class="form-control" type="date" id="refundFrom" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></div>
         <div class="col-auto"><label class="form-label" for="refundTo">To</label><input class="form-control" type="date" id="refundTo" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></div>
         <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Filter</button></div>
-        <div class="col text-end"><span class="text-muted">Total refunded:</span> <strong>{{ config('restaurant.currency') }} {{ number_format($total, 2) }}</strong></div>
     </form>
     <div class="table-responsive"><table class="table align-middle">
         <thead><tr><th>Refund</th><th>Order</th><th>Method</th><th class="text-end">Amount</th><th>Reason</th><th>By</th></tr></thead>

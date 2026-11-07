@@ -5,6 +5,7 @@
 @section('own-validation-errors', '1')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $addFailed = $errors->any() && old('branch_id') !== null;
 @endphp
@@ -67,8 +68,9 @@
                 @endif
             </div>
         @empty
-            <p class="text-muted">No floors or sections configured.</p>
+            <x-admin.empty icon="fas fa-building" title="No floors or sections yet" message="Group your tables into floors or sections such as Terrace or Main hall." />
         @endforelse
+        {{ $floors->links() }}
     </div></div>
 </div>
 

@@ -5,6 +5,7 @@
 @section('own-validation-errors', '1')
 
 @section('content')
+<x-admin.stats :items="$pageStats ?? []" />
 @php
     $statusClasses = ['pending' => 'warning', 'confirmed' => 'primary', 'seated' => 'danger', 'completed' => 'success', 'cancelled' => 'secondary', 'no_show' => 'dark'];
     $actionLabels = ['confirmed' => 'Confirm', 'seated' => 'Seat', 'completed' => 'Complete', 'cancelled' => 'Cancel', 'no_show' => 'No-show'];

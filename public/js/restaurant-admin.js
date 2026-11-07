@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(function (data) {
                     let text = data.reply || 'Sorry, something went wrong.';
                     (data.items || []).forEach(function (item) {
-                        text += '\n- ' + item.name + ' (' + Number(item.price).toFixed(2) + ')';
+                        text += '\n' + item.name + ', ' + Number(item.price).toLocaleString();
                     });
                     botMessage.textContent = text;
                     botMessage.style.whiteSpace = 'pre-line';

@@ -622,7 +622,8 @@ a:hover { color: var(--brand); }
 .chat-bubble { max-width: 85%; padding: .55rem .85rem; border-radius: 16px; font-size: .875rem; word-wrap: break-word; }
 .chat-bubble.bot { background: #fff; border: 1px solid var(--line); align-self: flex-start; border-bottom-left-radius: 4px; }
 .chat-bubble.user { background: var(--brand); color: var(--brand-contrast); align-self: flex-end; border-bottom-right-radius: 4px; }
-.chat-bubble ul { padding-left: 1.1rem; margin: .4rem 0 0; }
+.chat-bubble ul { list-style: none; padding-left: 0; margin: .4rem 0 0; }
+.chat-bubble li + li { margin-top: .15rem; }
 
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
 .reveal.in { opacity: 1; transform: none; }

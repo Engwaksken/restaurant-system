@@ -908,7 +908,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const ul = document.createElement('ul');
             list.forEach(item => {
                 const li = document.createElement('li');
-                li.textContent = `${item.name} — ${currency} ${Number(item.price).toFixed(2)}`;
+                li.textContent = `${item.name}, ${currency} ${Number(item.price).toLocaleString()}`;
                 ul.append(li);
             });
             bubble.append(ul);

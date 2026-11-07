@@ -41,6 +41,23 @@ class RestaurantSettings
         return array_merge($defaults, $this->cache[$cacheKey]);
     }
 
+    /** Whether the restaurant has ever saved this settings page. */
+    public function isSaved(int $restaurantId, string $group): bool
+    {
+        return Schema::hasTable('restaurant_settings')
+            && DB::table('restaurant_settings')->where('restaurant_id', $restaurantId)->where('group', $group)->exists();
+    }
+
+    /** Store one value outside the form (e.g. a cached model list). */
+    public function put(int $restaurantId, string $group, string $key, ?string $value): void
+    {
+        DB::table('restaurant_settings')->updateOrInsert(
+            ['restaurant_id' => $restaurantId, 'group' => $group, 'key' => $key],
+            ['value' => $value, 'is_secret' => false, 'updated_at' => now(), 'created_at' => now()],
+        );
+        unset($this->cache[$restaurantId . ':' . $group]);
+    }
+
     public function get(?int $restaurantId, string $group, string $key, mixed $default = null): mixed
     {
         return $this->group($restaurantId, $group)[$key] ?? $default;

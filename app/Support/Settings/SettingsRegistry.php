@@ -15,27 +15,37 @@ final class SettingsRegistry
         'ai' => [
             'label' => 'AI Assistant',
             'icon' => 'fas fa-brain',
-            'description' => 'Power the chat assistant on your website with AI. It only knows your public menu, prices, opening hours and contact details.',
+            'description' => 'Power the chat assistant on your website with AI. Pick a provider and paste its API key; the address and model are filled in for you.',
             'sections' => [
                 'Assistant' => ['enabled', 'assistant_name', 'greeting', 'instructions'],
-                'Provider' => ['provider', 'model', 'api_key', 'gemini_model', 'gemini_api_key'],
+                'Provider & key' => ['provider', 'model'],
             ],
             'fields' => [
                 'enabled' => ['label' => 'Use AI for the website chat', 'type' => 'toggle', 'default' => false, 'help' => 'When off, the chat answers simple menu questions without AI.'],
                 'assistant_name' => ['label' => 'Assistant name', 'type' => 'text', 'default' => 'Restaurant Assistant', 'rules' => ['nullable', 'string', 'max:60']],
                 'greeting' => ['label' => 'Greeting message', 'type' => 'text', 'default' => 'Hello! Ask me about our menu, prices, opening hours or how to order.', 'rules' => ['nullable', 'string', 'max:200']],
                 'instructions' => ['label' => 'Extra instructions', 'type' => 'textarea', 'default' => '', 'help' => 'Optional tone or rules, e.g. "Recommend our daily special" or "Answer in English and Luganda".', 'rules' => ['nullable', 'string', 'max:1500']],
-                'provider' => ['label' => 'AI provider', 'type' => 'select', 'default' => 'anthropic', 'options' => ['anthropic' => 'Anthropic Claude', 'gemini' => 'Google Gemini']],
-                'model' => ['label' => 'Claude model', 'type' => 'select', 'default' => 'claude-opus-5-5', 'options' => [
-                    'claude-opus-5-5' => 'Claude Opus 5.5 (most capable)',
-                    'claude-sonnet-5-5' => 'Claude Sonnet 5.5 (balanced)',
-                    'claude-haiku-5-5' => 'Claude Haiku 5.5 (fastest, lowest cost)',
-                ], 'show_if' => ['provider' => 'anthropic']],
-                'api_key' => ['label' => 'Anthropic API key', 'type' => 'secret', 'help' => 'Create one at console.anthropic.com under API keys.', 'show_if' => ['provider' => 'anthropic']],
-                'gemini_model' => ['label' => 'Gemini model', 'type' => 'text', 'default' => 'gemini-2.5-flash', 'rules' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9.\-]+$/'], 'show_if' => ['provider' => 'gemini']],
-                'gemini_api_key' => ['label' => 'Gemini API key', 'type' => 'secret', 'help' => 'Create one in Google AI Studio.', 'show_if' => ['provider' => 'gemini']],
+                'provider' => ['label' => 'AI provider', 'type' => 'select', 'default' => 'anthropic', 'options' => '@providers'],
+                'model' => ['label' => 'Model', 'type' => 'model', 'default' => '', 'help' => 'Filled in automatically for the provider. Use "Load models" to pick from the provider\'s current list.', 'rules' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9._:\/\-]*$/']],
             ],
-            'required_when_enabled' => ['anthropic' => ['api_key'], 'gemini' => ['gemini_api_key']],
+            'required_when_enabled' => '@provider_keys',
+        ],
+        'taxes' => [
+            'label' => 'Taxes',
+            'icon' => 'fas fa-percent',
+            'description' => 'Tax applied to POS and online orders, and how it appears on receipts and invoices.',
+            'sections' => [
+                'Tax' => ['enabled', 'tax_name', 'rate', 'mode'],
+                'Registration' => ['tin'],
+            ],
+            'fields' => [
+                'enabled' => ['label' => 'Charge tax on orders', 'type' => 'toggle', 'default' => false],
+                'tax_name' => ['label' => 'Tax name', 'type' => 'text', 'default' => 'VAT', 'help' => 'Shown on the POS, receipts and invoices, e.g. VAT or GST.', 'rules' => ['nullable', 'string', 'max:30']],
+                'rate' => ['label' => 'Tax rate (%)', 'type' => 'number', 'step' => '0.01', 'default' => '18', 'rules' => ['nullable', 'numeric', 'min:0', 'max:100']],
+                'mode' => ['label' => 'Menu prices', 'type' => 'select', 'default' => 'exclusive', 'options' => ['exclusive' => 'Exclude tax (tax is added at checkout)', 'inclusive' => 'Include tax (tax is part of the menu price)']],
+                'tin' => ['label' => 'Tax identification number (TIN)', 'type' => 'text', 'default' => '', 'help' => 'Printed on receipts and invoices when enabled in those settings.', 'rules' => ['nullable', 'string', 'max:50']],
+            ],
+            'required_when' => ['enabled' => ['rate']],
         ],
         'sms' => [
             'label' => 'SMS',
@@ -156,13 +166,30 @@ final class SettingsRegistry
 
     public static function group(string $group): array
     {
-        return self::GROUPS[$group];
+        $definition = self::GROUPS[$group];
+        if ($group === 'ai') {
+            $definition['fields']['provider']['options'] = AiProviders::options();
+            $definition['required_when_enabled'] = [];
+            foreach (AiProviders::PROVIDERS as $key => $provider) {
+                $field = AiProviders::keyField($key);
+                $definition['fields'][$field] = [
+                    'label' => $provider['label'] . ' API key',
+                    'type' => 'secret',
+                    'help' => $provider['key_hint'] . '. Get one at ' . $provider['key_url'],
+                    'show_if' => ['provider' => $key],
+                ];
+                $definition['sections']['Provider & key'][] = $field;
+                $definition['required_when_enabled'][$key] = [$field];
+            }
+        }
+
+        return $definition;
     }
 
     /** @return array<string, mixed> */
     public static function defaults(string $group): array
     {
-        return collect(self::GROUPS[$group]['fields'])
+        return collect(self::group($group)['fields'])
             ->map(fn (array $field) => $field['default'] ?? null)
             ->all();
     }
@@ -171,7 +198,7 @@ final class SettingsRegistry
     public static function rules(string $group): array
     {
         $rules = [];
-        foreach (self::GROUPS[$group]['fields'] as $key => $field) {
+        foreach (self::group($group)['fields'] as $key => $field) {
             $rules[$key] = $field['rules'] ?? match ($field['type']) {
                 'toggle' => ['nullable', 'boolean'],
                 'select' => ['nullable', 'in:' . implode(',', array_map('strval', array_keys($field['options'])))],

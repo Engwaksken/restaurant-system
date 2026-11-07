@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Services\Orders\OrderNumberGenerator;
+use App\Services\Orders\TaxService;
 use App\Http\Controllers\Concerns\ScopesToUserBranches;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
@@ -60,7 +61,8 @@ class PosController extends Controller
                 'minPoints' => (int) config('restaurant.loyalty.min_redeem_points', 0),
                 'maxPercent' => (float) config('restaurant.loyalty.max_redeem_percent', 100),
             ],
-            'taxRate' => max(0, min(100, (float) config('restaurant.tax_rate', 0))),
+            'taxRate' => app(TaxService::class)->config((int) $user->restaurant_id)['rate'],
+            'taxConfig' => app(TaxService::class)->config((int) $user->restaurant_id),
             'deliveryFee' => max(0, (float) config('restaurant.delivery_fee', 0)),
         ]);
     }
@@ -103,9 +105,10 @@ class PosController extends Controller
             $loyaltyDiscount = $points > 0 ? $loyalty->quoteRedemption($customer, $points, $subtotal - $discount) : 0.0;
 
             $taxable = max(0, $subtotal - $discount - $loyaltyDiscount);
-            $tax = round($taxable * max(0, min(100, (float) config('restaurant.tax_rate', 0))) / 100, 2);
+            $taxed = app(TaxService::class)->apply((int) $user->restaurant_id, $taxable);
+            $tax = $taxed['tax'];
             $deliveryFee = $data['order_type'] === 'delivery' ? max(0, (float) config('restaurant.delivery_fee', 0)) : 0.0;
-            $total = round($taxable + $tax + $deliveryFee, 2);
+            $total = round($taxed['total'] + $deliveryFee, 2);
 
             $order = Order::create([
                 'branch_id' => $data['branch_id'],

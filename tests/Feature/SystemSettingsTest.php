@@ -110,7 +110,7 @@ class SystemSettingsTest extends TestCase
         [$restaurant] = $this->restaurantWithBranch('C');
         config(['restaurant.public_code' => $restaurant->code]);
         $this->menuItem($restaurant, 'Luwombo Chicken', 25000);
-        app(RestaurantSettings::class)->save($restaurant->id, 'ai', ['enabled' => true, 'provider' => 'gemini', 'gemini_model' => 'gemini-2.5-flash', 'gemini_api_key' => 'g-key']);
+        app(RestaurantSettings::class)->save($restaurant->id, 'ai', ['enabled' => true, 'provider' => 'gemini', 'model' => 'gemini-2.5-flash', 'key_gemini' => 'g-key']);
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['candidates' => [['content' => ['parts' => [['text' => 'Try our Luwombo Chicken!']]]]]])]);
 
         $this->postJson(route('api.v1.chat.message'), ['message' => 'What do you recommend?'])

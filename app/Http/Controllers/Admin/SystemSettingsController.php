@@ -12,6 +12,7 @@ use App\Services\Ai\RestaurantAssistant;
 use App\Services\Notifications\SmsService;
 use App\Services\Settings\MailSettings;
 use App\Services\Settings\RestaurantSettings;
+use App\Support\Settings\AiProviders;
 use App\Support\Settings\SettingsRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,18 +27,24 @@ use Throwable;
  */
 class SystemSettingsController extends Controller
 {
-    public const PAGES = ['ai', 'sms', 'email', 'receipt', 'invoice', 'accessibility'];
+    public const PAGES = ['ai', 'taxes', 'sms', 'email', 'receipt', 'invoice', 'accessibility'];
 
     public function edit(Request $request, string $group, RestaurantSettings $settings): View
     {
         $user = $this->authorizeSettings($request);
         abort_unless(in_array($group, self::PAGES, true), 404);
 
+        $values = $settings->group($user->restaurant_id, $group);
+        if ($group === 'taxes') {
+            $values['tin'] = $values['tin'] ?: (string) Restaurant::query()->whereKey($user->restaurant_id)->value('tin');
+        }
+
         return view('admin.settings.system', [
             'groupKey' => $group,
             'group' => SettingsRegistry::group($group),
-            'values' => $settings->group($user->restaurant_id, $group),
+            'values' => $values,
             'secrets' => $this->secretStatus($user->restaurant_id, $group, $settings),
+            'aiProviders' => $group === 'ai' ? $this->providerCatalogue($user->restaurant_id, $settings) : [],
         ]);
     }
 
@@ -54,7 +61,17 @@ class SystemSettingsController extends Controller
         }
         $this->assertRequiredWhenEnabled($user->restaurant_id, $group, $data, $settings);
 
+        if ($group === 'ai' && AiProviders::has((string) ($data['provider'] ?? '')) && trim((string) ($data['model'] ?? '')) === '') {
+            $data['model'] = AiProviders::get($data['provider'])['default_model'];
+        }
         $settings->save($user->restaurant_id, $group, $data);
+        if ($group === 'taxes') {
+            Restaurant::query()->whereKey($user->restaurant_id)->update(['tin' => trim((string) ($data['tin'] ?? '')) ?: null]);
+        }
+        if ($group === 'ai' && trim((string) ($data[AiProviders::keyField((string) $data['provider'])] ?? '')) !== '') {
+            // A new key was entered: load that provider's model list right away.
+            $this->refreshModels($user->restaurant_id, (string) $data['provider'], $settings, quiet: true);
+        }
         $logger->log('settings.' . $group . '.updated', null, [
             // Never log secret values.
             'fields' => array_keys(array_filter(
@@ -104,6 +121,59 @@ class SystemSettingsController extends Controller
 
             return back()->withInput()->with('error', 'The test failed: ' . $this->safeMessage($exception));
         }
+    }
+
+    /** Fetch and remember the selected provider's model list ("Load models"). */
+    public function models(Request $request, RestaurantSettings $settings): RedirectResponse
+    {
+        $user = $this->authorizeSettings($request);
+        $provider = (string) $settings->get($user->restaurant_id, 'ai', 'provider', 'anthropic');
+        $count = $this->refreshModels($user->restaurant_id, $provider, $settings);
+
+        return $count === null
+            ? back()->with('error', session('models_error', 'Could not load models. Save a valid API key for ' . AiProviders::get($provider)['label'] . ' first.'))
+            : back()->with('success', 'Loaded ' . $count . ' ' . AiProviders::get($provider)['label'] . ' models. Pick one from the Model list.');
+    }
+
+    private function refreshModels(int $restaurantId, string $provider, RestaurantSettings $settings, bool $quiet = false): ?int
+    {
+        $apiKey = (string) $settings->get($restaurantId, 'ai', AiProviders::keyField($provider), '');
+        if (!AiProviders::has($provider) || $apiKey === '') {
+            return null;
+        }
+        try {
+            $models = app(RestaurantAssistant::class)->listModels($provider, $apiKey);
+        } catch (Throwable $exception) {
+            if (!$quiet) {
+                report($exception);
+                session()->flash('models_error', 'Could not load models: ' . $this->safeMessage($exception));
+            }
+
+            return null;
+        }
+        $settings->put($restaurantId, 'ai', 'models_' . $provider, json_encode(array_slice($models, 0, 300)));
+
+        return count($models);
+    }
+
+    /** Provider details for the settings page, including any loaded model lists. */
+    private function providerCatalogue(int $restaurantId, RestaurantSettings $settings): array
+    {
+        $values = $settings->group($restaurantId, 'ai');
+        $catalogue = [];
+        foreach (AiProviders::PROVIDERS as $key => $provider) {
+            $loaded = json_decode((string) ($values['models_' . $key] ?? ''), true);
+            $catalogue[$key] = [
+                'label' => $provider['label'],
+                'base_url' => $provider['base_url'],
+                'default_model' => $provider['default_model'],
+                'models' => array_values(array_unique(array_merge($provider['models'], is_array($loaded) ? $loaded : []))),
+                'loaded' => is_array($loaded),
+                'key_url' => $provider['key_url'],
+            ];
+        }
+
+        return $catalogue;
     }
 
     private function assertRequiredWhenEnabled(int $restaurantId, string $group, array $data, RestaurantSettings $settings): void

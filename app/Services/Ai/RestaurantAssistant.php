@@ -12,6 +12,7 @@ use Anthropic\Core\Exceptions\RateLimitException;
 use App\Models\MenuItem;
 use App\Models\Restaurant;
 use App\Services\Settings\RestaurantSettings;
+use App\Support\Settings\AiProviders;
 use App\Support\Brand;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -46,9 +47,20 @@ class RestaurantAssistant
 
         if ($force || filter_var($ai['enabled'] ?? false, FILTER_VALIDATE_BOOL)) {
             try {
-                $text = ($ai['provider'] ?? 'anthropic') === 'gemini'
-                    ? $this->askGemini($ai, $this->systemPrompt($restaurant, $ai), $message)
-                    : $this->askClaude($ai, $this->systemPrompt($restaurant, $ai), $message);
+                $providerKey = AiProviders::has((string) ($ai['provider'] ?? '')) ? (string) $ai['provider'] : 'anthropic';
+                $provider = AiProviders::get($providerKey);
+                $apiKey = (string) ($ai[AiProviders::keyField($providerKey)] ?? '');
+                if ($apiKey === '') {
+                    throw new RuntimeException('Add your ' . $provider['label'] . ' API key first.');
+                }
+                $model = trim((string) ($ai['model'] ?? '')) ?: $provider['default_model'];
+                $system = $this->systemPrompt($restaurant, $ai);
+
+                $text = match ($provider['protocol']) {
+                    'gemini' => $this->askGemini($provider, $apiKey, $model, $system, $message),
+                    'openai' => $this->askOpenAiCompatible($provider, $apiKey, $model, $system, $message),
+                    default => $this->askClaude($apiKey, $model, $system, $message),
+                };
 
                 return ['reply' => $text, 'items' => [], 'source' => 'ai'];
             } catch (Throwable $exception) {
@@ -62,19 +74,15 @@ class RestaurantAssistant
         return $this->fallback($restaurant, $message);
     }
 
-    private function askClaude(array $ai, string $system, string $message): string
+    private function askClaude(string $apiKey, string $model, string $system, string $message): string
     {
-        if (empty($ai['api_key'])) {
-            throw new RuntimeException('Add your Anthropic API key first.');
-        }
-
-        $client = new AnthropicClient(apiKey: (string) $ai['api_key']);
+        $client = new AnthropicClient(apiKey: $apiKey);
 
         try {
             $response = $client->beta->messages->create(
                 maxTokens: 1024,
                 messages: [['role' => 'user', 'content' => $message]],
-                model: (string) ($ai['model'] ?: 'claude-opus-5-5'),
+                model: $model,
                 system: $system,
                 // Short chat answers: low effort keeps replies quick and inexpensive.
                 outputConfig: ['effort' => 'low'],
@@ -107,17 +115,14 @@ class RestaurantAssistant
         return $this->clean($text);
     }
 
-    private function askGemini(array $ai, string $system, string $message): string
+    private function askGemini(array $provider, string $apiKey, string $model, string $system, string $message): string
     {
-        if (empty($ai['gemini_api_key'])) {
-            throw new RuntimeException('Add your Gemini API key first.');
-        }
-        $model = preg_match('/^[a-z0-9.\-]+$/', (string) $ai['gemini_model']) ? $ai['gemini_model'] : 'gemini-2.5-flash';
+        $model = preg_match('/^[A-Za-z0-9.\-]+$/', $model) ? $model : $provider['default_model'];
 
         $json = Http::timeout(30)->acceptJson()
             // Key in a header, not the URL, so it never lands in access logs.
-            ->withHeaders(['x-goog-api-key' => (string) $ai['gemini_api_key']])
-            ->post('https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent', [
+            ->withHeaders(['x-goog-api-key' => $apiKey])
+            ->post($provider['base_url'] . '/models/' . $model . ':generateContent', [
                 'systemInstruction' => ['parts' => [['text' => $system]]],
                 'contents' => [['role' => 'user', 'parts' => [['text' => $message]]]],
                 'generationConfig' => ['maxOutputTokens' => 1024, 'temperature' => 0.3],
@@ -126,6 +131,62 @@ class RestaurantAssistant
         $text = collect(data_get($json, 'candidates.0.content.parts', []))->pluck('text')->filter()->implode('');
 
         return $this->clean($text);
+    }
+
+    /** OpenAI, Mistral, DeepSeek, Groq, xAI, OpenRouter and Together share this API shape. */
+    private function askOpenAiCompatible(array $provider, string $apiKey, string $model, string $system, string $message): string
+    {
+        $json = Http::timeout(30)->acceptJson()->withToken($apiKey)
+            ->withHeaders(array_filter([
+                // OpenRouter asks apps to identify themselves; harmless elsewhere.
+                'HTTP-Referer' => $provider['protocol'] === 'openai' && str_contains($provider['base_url'], 'openrouter') ? url('/') : null,
+                'X-Title' => str_contains($provider['base_url'], 'openrouter') ? config('app.name') : null,
+            ]))
+            ->post($provider['base_url'] . '/chat/completions', [
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user', 'content' => $message],
+                ],
+                'max_tokens' => 1024,
+                'temperature' => 0.3,
+            ])->throw()->json();
+
+        return $this->clean((string) data_get($json, 'choices.0.message.content', ''));
+    }
+
+    /**
+     * Fetch the provider's current model ids so the admin can pick one.
+     *
+     * @return list<string>
+     */
+    public function listModels(string $providerKey, string $apiKey): array
+    {
+        $provider = AiProviders::get($providerKey);
+
+        if ($provider['protocol'] === 'anthropic') {
+            $client = new AnthropicClient(apiKey: $apiKey);
+            $ids = [];
+            foreach ($client->models->list(limit: 100)->getItems() as $model) {
+                $ids[] = $model->id;
+            }
+
+            return array_values(array_unique($ids));
+        }
+
+        if ($provider['protocol'] === 'gemini') {
+            $json = Http::timeout(20)->acceptJson()->withHeaders(['x-goog-api-key' => $apiKey])
+                ->get($provider['base_url'] . '/models', ['pageSize' => 200])->throw()->json();
+
+            return collect($json['models'] ?? [])
+                ->filter(fn ($model) => in_array('generateContent', (array) ($model['supportedGenerationMethods'] ?? []), true))
+                ->map(fn ($model) => \Illuminate\Support\Str::after((string) $model['name'], 'models/'))
+                ->values()->all();
+        }
+
+        $json = Http::timeout(20)->acceptJson()->withToken($apiKey)->get($provider['base_url'] . '/models')->throw()->json();
+
+        return collect($json['data'] ?? [])->pluck('id')->filter()->map(fn ($id) => (string) $id)->sort()->values()->all();
     }
 
     private function systemPrompt(Restaurant $restaurant, array $ai): string

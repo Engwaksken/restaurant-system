@@ -89,7 +89,7 @@
             <dl class="row small mt-3 mb-2">
                 <dt class="col-7 fw-normal">Subtotal</dt><dd class="col-5 text-end" id="sumSubtotal">0.00</dd>
                 <dt class="col-7 fw-normal">Discounts</dt><dd class="col-5 text-end" id="sumDiscount">0.00</dd>
-                <dt class="col-7 fw-normal">Tax ({{ rtrim(rtrim(number_format($taxRate, 2), '0'), '.') }}%)</dt><dd class="col-5 text-end" id="sumTax">0.00</dd>
+                <dt class="col-7 fw-normal">{{ $taxConfig['name'] }} ({{ rtrim(rtrim(number_format($taxRate, 2), '0'), '.') }}%{{ $taxConfig['inclusive'] ? ', included' : '' }})</dt><dd class="col-5 text-end" id="sumTax">0.00</dd>
                 <dt class="col-7 fw-normal">Delivery</dt><dd class="col-5 text-end" id="sumDelivery">0.00</dd>
                 <dt class="col-7 fs-6">Estimated total</dt><dd class="col-5 text-end fs-6 fw-bold">{{ $currency }} <span id="sumTotal">0.00</span></dd>
             </dl>
@@ -143,6 +143,7 @@
     const MENU = @json((object) $menuData);
     const RESUME = @json($resumeItems);
     const TAX_RATE = {{ $taxRate }};
+    const TAX_INCLUSIVE = {{ $taxConfig['inclusive'] ? 'true' : 'false' }};
     const DELIVERY_FEE = {{ $deliveryFee }};
     const POINT_VALUE = {{ $loyalty['enabled'] ? $loyalty['pointValue'] : 0 }};
 
@@ -219,13 +220,13 @@
         const points = Number(document.getElementById('posPoints')?.value || 0);
         const discounts = Math.min(subtotal, discount + points * POINT_VALUE);
         const taxable = Math.max(0, subtotal - discounts);
-        const tax = taxable * TAX_RATE / 100;
+        const tax = TAX_INCLUSIVE ? taxable - taxable / (1 + TAX_RATE / 100) : taxable * TAX_RATE / 100;
         const delivery = document.getElementById('posType').value === 'delivery' ? DELIVERY_FEE : 0;
         document.getElementById('sumSubtotal').textContent = money(subtotal);
         document.getElementById('sumDiscount').textContent = discounts > 0 ? '− ' + money(discounts) : '0.00';
         document.getElementById('sumTax').textContent = money(tax);
         document.getElementById('sumDelivery').textContent = money(delivery);
-        document.getElementById('sumTotal').textContent = money(taxable + tax + delivery);
+        document.getElementById('sumTotal').textContent = money(taxable + (TAX_INCLUSIVE ? 0 : tax) + delivery);
         emptyEl.hidden = cart.length > 0;
         form.querySelectorAll('[data-needs-items]').forEach((button) => { button.disabled = cart.length === 0; });
     }

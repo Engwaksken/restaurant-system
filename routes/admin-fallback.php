@@ -48,7 +48,6 @@ $adminModuleRoutes = [
   
 
     // Settings
-    ['admin.settings.taxes', 'settings/taxes', 'settings.taxes'],
 ];
 
 Route::middleware(['auth'])

@@ -68,6 +68,17 @@
                                                         <option value="{{ $optionValue }}" @selected((string) $value($key) === (string) $optionValue)>{{ $optionLabel }}</option>
                                                     @endforeach
                                                 </select>
+                                            @elseif($field['type'] === 'model')
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-microchip"></i></span>
+                                                    <input class="form-control font-monospace @error($key) is-invalid @enderror" id="{{ $key }}" name="{{ $key }}" value="{{ $value($key) }}" list="modelOptions" autocomplete="off" spellcheck="false">
+                                                    <button class="btn btn-light border" type="submit" form="loadModelsForm" title="Load the provider's current model list"><i class="fas fa-rotate me-1"></i>Load models</button>
+                                                </div>
+                                                <datalist id="modelOptions"></datalist>
+                                                <div class="small text-muted mt-2">
+                                                    <i class="fas fa-link me-1"></i>API address: <code id="providerBaseUrl">{{ $aiProviders[$values['provider'] ?? 'anthropic']['base_url'] ?? '' }}</code>
+                                                    <span class="ms-2" id="providerModelCount"></span>
+                                                </div>
                                             @elseif($field['type'] === 'textarea')
                                                 <textarea class="form-control @error($key) is-invalid @enderror" id="{{ $key }}" name="{{ $key }}" rows="3">{{ $value($key) }}</textarea>
                                             @elseif($field['type'] === 'secret')
@@ -84,7 +95,7 @@
                                                     </div>
                                                 @endif
                                             @else
-                                                <input class="form-control @error($key) is-invalid @enderror" type="{{ $field['type'] === 'number' ? 'number' : ($field['type'] === 'email' ? 'email' : 'text') }}" id="{{ $key }}" name="{{ $key }}" value="{{ $value($key) }}">
+                                                <input class="form-control @error($key) is-invalid @enderror" type="{{ $field['type'] === 'number' ? 'number' : ($field['type'] === 'email' ? 'email' : 'text') }}" @if(!empty($field['step'])) step="{{ $field['step'] }}" @endif id="{{ $key }}" name="{{ $key }}" value="{{ $value($key) }}">
                                             @endif
                                             @if($field['type'] !== 'secret')
                                                 @error($key)<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -105,6 +116,10 @@
             </div>
         </form>
     </div>
+
+    @if($groupKey === 'ai')
+        <form method="POST" action="{{ route('admin.settings.ai.models') }}" id="loadModelsForm" class="d-none">@csrf</form>
+    @endif
 
     @if($test)
         <div class="col-xl-4">
@@ -141,6 +156,35 @@ document.addEventListener('DOMContentLoaded', function () {
             button.querySelector('i').className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
         });
     });
+
+    // AI: fill in the API address, model suggestions and default model for the chosen provider.
+    const providers = @json($aiProviders ?? []);
+    const providerSelect = document.getElementById('provider');
+    const modelInput = document.getElementById('model');
+    if (providerSelect && modelInput && Object.keys(providers).length) {
+        const datalist = document.getElementById('modelOptions');
+        const baseUrl = document.getElementById('providerBaseUrl');
+        const count = document.getElementById('providerModelCount');
+        const syncProvider = function (switched) {
+            const provider = providers[providerSelect.value];
+            if (!provider) { return; }
+            baseUrl.textContent = provider.base_url;
+            datalist.replaceChildren(...provider.models.map(function (id) {
+                const option = document.createElement('option');
+                option.value = id;
+                return option;
+            }));
+            count.textContent = provider.loaded ? provider.models.length + ' models available' : 'Showing suggested models. Save your key to load the full list.';
+            const belongsElsewhere = Object.keys(providers).some(function (key) {
+                return key !== providerSelect.value && providers[key].models.includes(modelInput.value);
+            });
+            if (switched && (modelInput.value === '' || belongsElsewhere)) {
+                modelInput.value = provider.default_model;
+            }
+        };
+        providerSelect.addEventListener('change', function () { syncProvider(true); });
+        syncProvider(modelInput.value === '');
+    }
 
     // Show provider-specific fields only for the selected provider.
     const dependants = document.querySelectorAll('[data-show-if]');

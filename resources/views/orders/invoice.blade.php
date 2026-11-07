@@ -109,7 +109,7 @@
     <table class="totals">
         <tr><td>Subtotal</td><td class="num">{{ $money($order->subtotal) }}</td></tr>
         @if((float) $order->discount > 0)<tr><td>Discount</td><td class="num">-{{ $money($order->discount) }}</td></tr>@endif
-        @if((float) $order->tax > 0)<tr><td>Tax</td><td class="num">{{ $money($order->tax) }}</td></tr>@endif
+        @if((float) $order->tax > 0)<tr><td>{{ app(\App\Services\Orders\TaxService::class)->config($restaurant?->id)['name'] }}</td><td class="num">{{ $money($order->tax) }}</td></tr>@endif
         @if((float) $order->service_charge > 0)<tr><td>Service charge</td><td class="num">{{ $money($order->service_charge) }}</td></tr>@endif
         @if((float) $order->delivery_fee > 0)<tr><td>Delivery</td><td class="num">{{ $money($order->delivery_fee) }}</td></tr>@endif
         <tr class="grand"><td>Total</td><td class="num">{{ $currency }} {{ $money($order->total) }}</td></tr>

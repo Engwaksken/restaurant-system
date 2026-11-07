@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -80,11 +81,17 @@ class InventoryController extends Controller
             ->orderBy('name')
             ->get();
         $categories = InventoryCategory::query()->where('restaurant_id', $restaurantId)->orderBy('name')->get();
+        $search = trim((string) $request->query('search', ''));
         $items = InventoryItem::query()
             ->where('restaurant_id', $restaurantId)
             ->withTrashed()
+            ->when($search !== '', fn ($query) => $query->where(fn ($match) => $match
+                ->where('name', 'like', '%' . $search . '%')
+                ->orWhere('sku', $search)
+                ->orWhere('barcode', $search)))
             ->orderBy('name')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
         $activeItems = InventoryItem::query()
             ->where('restaurant_id', $restaurantId)
             ->where('is_active', true)
@@ -96,10 +103,15 @@ class InventoryController extends Controller
             ->where('branches.restaurant_id', $restaurantId)
             ->where('inventory_items.restaurant_id', $restaurantId)
             ->when($user->branch_id, fn ($query) => $query->where('branches.id', $user->branch_id))
-            ->select('inventory_stocks.*', 'branches.name as branch_name', 'inventory_items.name as item_name', 'inventory_items.usage_unit')
+            ->when($search !== '', fn ($query) => $query->where(fn ($match) => $match
+                ->where('inventory_items.name', 'like', '%' . $search . '%')
+                ->orWhere('inventory_items.sku', $search)
+                ->orWhere('inventory_items.barcode', $search)))
+            ->select('inventory_stocks.*', 'branches.name as branch_name', 'inventory_items.name as item_name', 'inventory_items.usage_unit', 'inventory_items.minimum_stock', 'inventory_items.reorder_level', 'inventory_items.barcode')
             ->orderBy('branches.name')
             ->orderBy('inventory_items.name')
-            ->get();
+            ->paginate(30, ['*'], 'stock_page')
+            ->withQueryString();
 
         $itemIds = $items->pluck('id');
         $stockedItemIds = DB::table('inventory_stocks')->whereIn('inventory_item_id', $itemIds)->pluck('inventory_item_id')
@@ -108,7 +120,51 @@ class InventoryController extends Controller
 
         $pageStats = $this->inventoryStats($restaurantId, $user);
 
-        return view('admin.inventory.index', compact('branches', 'categories', 'items', 'activeItems', 'stocks', 'stockedItemIds', 'pageStats'));
+        $tab = $request->query('tab') === 'stock' || $request->has('stock_page') ? 'stock' : 'items';
+
+        return view('admin.inventory.index', compact('branches', 'categories', 'items', 'activeItems', 'stocks', 'stockedItemIds', 'pageStats', 'search', 'tab'));
+    }
+
+    /**
+     * Find an inventory item by scanned barcode (or SKU) for this restaurant,
+     * with on-hand stock per branch the user may see.
+     */
+    public function lookup(Request $request): JsonResponse
+    {
+        $restaurantId = $this->authorizeInventory('view');
+        $user = $request->user();
+        $code = trim((string) $request->validate(['code' => ['required', 'string', 'max:255']])['code']);
+
+        $item = InventoryItem::query()
+            ->where('restaurant_id', $restaurantId)
+            ->where(fn ($match) => $match->where('barcode', $code)->orWhere('sku', $code))
+            ->first();
+        if (!$item) {
+            return response()->json(['found' => false, 'code' => $code]);
+        }
+
+        $stock = DB::table('inventory_stocks')
+            ->join('branches', 'branches.id', '=', 'inventory_stocks.branch_id')
+            ->where('branches.restaurant_id', $restaurantId)
+            ->where('inventory_stocks.inventory_item_id', $item->id)
+            ->when($user->branch_id, fn ($query) => $query->where('branches.id', $user->branch_id))
+            ->orderBy('branches.name')
+            ->get(['branches.name as branch', 'inventory_stocks.quantity']);
+
+        return response()->json([
+            'found' => true,
+            'code' => $code,
+            'item' => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'sku' => $item->sku,
+                'barcode' => $item->barcode,
+                'usage_unit' => $item->usage_unit,
+                'unit_cost' => (float) $item->unit_cost,
+                'is_active' => (bool) $item->is_active,
+                'stock' => $stock->map(fn ($row) => ['branch' => $row->branch, 'quantity' => (float) $row->quantity])->values(),
+            ],
+        ]);
     }
 
     public function storeItem(Request $request): RedirectResponse
@@ -234,13 +290,16 @@ class InventoryController extends Controller
     private function itemRules(int $restaurantId, ?int $ignoreId = null): array
     {
         $skuRule = Rule::unique('inventory_items', 'sku');
+        $barcodeRule = Rule::unique('inventory_items', 'barcode')->where('restaurant_id', $restaurantId);
         if ($ignoreId !== null) {
             $skuRule->ignore($ignoreId);
+            $barcodeRule->ignore($ignoreId);
         }
 
         return [
             'name' => ['required', 'string', 'max:255'],
             'sku' => ['nullable', 'string', 'max:255', $skuRule],
+            'barcode' => ['nullable', 'string', 'max:64', 'regex:/^[\x21-\x7E]+$/', $barcodeRule],
             'inventory_category_id' => [
                 'nullable',
                 'integer',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Services\Orders\OrderNumberGenerator;
+use App\Services\Orders\TaxService;
 use App\Services\Payments\GatewaySettings;
 use App\Services\Notifications\SmsService;
 use App\Services\Settings\MailSettings;
@@ -93,9 +94,10 @@ class PublicOrderController extends Controller
             }
 
             $subtotal = $priced['subtotal'];
-            $tax = round($subtotal * max(0, min(100, (float) config('restaurant.tax_rate', 0))) / 100, 2);
+            $taxed = app(TaxService::class)->apply((int) $restaurant->id, (float) $subtotal);
+            $tax = $taxed['tax'];
             $deliveryFee = max(0, (float) config('restaurant.delivery_fee', 0));
-            $total = $subtotal + $tax + $deliveryFee;
+            $total = $taxed['total'] + $deliveryFee;
             $trackingToken = bin2hex(random_bytes(32));
 
             $order = Order::create([

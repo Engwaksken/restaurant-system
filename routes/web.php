@@ -252,6 +252,7 @@ Route::middleware('auth')
         Route::get('/settings/backups/{file}', [BackupController::class, 'download'])->where('file', '[A-Za-z0-9_.-]+')->name('settings.backups.download');
         Route::delete('/settings/backups/{file}', [BackupController::class, 'destroy'])->where('file', '[A-Za-z0-9_.-]+')->name('settings.backups.destroy');
 
+        Route::post('/settings/ai/models', [SystemSettingsController::class, 'models'])->middleware('throttle:10,1')->name('settings.ai.models');
         Route::get('/settings/{group}', [SystemSettingsController::class, 'edit'])
             ->whereIn('group', SystemSettingsController::PAGES)->name('settings.system');
         Route::put('/settings/{group}', [SystemSettingsController::class, 'update'])
@@ -321,6 +322,7 @@ Route::middleware('auth')
             ->name('recipes.destroy');
 
         Route::get('/inventory/products', [InventoryController::class, 'index'])->name('inventory.products');
+        Route::get('/inventory/lookup', [InventoryController::class, 'lookup'])->middleware('throttle:120,1')->name('inventory.lookup');
         Route::get('/inventory/categories', [InventoryController::class, 'index'])->name('inventory.categories');
         Route::get('/inventory/stock', [InventoryController::class, 'stock'])->name('inventory.stock');
         Route::get('/inventory/adjustments', [InventoryController::class, 'adjustments'])->name('inventory.adjustments');

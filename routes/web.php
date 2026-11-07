@@ -30,6 +30,7 @@ use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\PurchasingController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RecipeController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ReservationController;
 use App\Http\Controllers\Admin\TableController;
 use App\Http\Controllers\Admin\StockTransferController;
@@ -338,6 +339,11 @@ Route::middleware('auth')
         Route::post('/purchases/{purchase}/payments', [PurchasingController::class, 'recordSupplierPayment'])
             ->whereNumber('purchase')->name('purchases.payments.store');
         Route::get('/supplier-payments', [PurchasingController::class, 'purchases'])->name('supplier-payments.index');
+
+        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::post('/roles/{role}/assign', [RoleController::class, 'assign'])
+            ->where('role', '[a-z_-]+')
+            ->name('roles.assign');
 
         Route::get('/settings/roles-permissions', [PermissionManagementController::class, 'index'])
             ->name('settings.roles-permissions');

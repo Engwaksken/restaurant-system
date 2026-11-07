@@ -41,7 +41,6 @@ $adminModuleRoutes = [
     ['admin.general-ledger.index', 'general-ledger', 'finance.general-ledger'],
 
     // Employees
-    ['admin.roles.index', 'roles', 'employees.roles'],
 
     // Direct modules
     ['admin.reports.index', 'reports', 'reports.index'],

@@ -12,7 +12,7 @@ use Illuminate\View\View;
 
 class PermissionManagementController extends Controller
 {
-    private const ABILITIES = [
+    public const ABILITIES = [
         'admin.dashboard.view' => 'View dashboard',
         'admin.menu-items.view' => 'View menu items',
         'admin.menu-items.create' => 'Create menu items',
@@ -86,7 +86,7 @@ class PermissionManagementController extends Controller
         $restaurantId = $this->authorizeManager($request);
         $users = User::query()
             ->where('restaurant_id', $restaurantId)
-            ->with('permissions')
+            ->with(['permissions', 'branch:id,name'])
             ->orderBy('name')
             ->paginate(25);
 
@@ -103,6 +103,7 @@ class PermissionManagementController extends Controller
             'pageStats' => $pageStats,
             'users' => $users,
             'abilities' => self::ABILITIES,
+            'roles' => \App\Support\StaffRoles::all(),
         ]);
     }
 

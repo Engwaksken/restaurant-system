@@ -80,8 +80,12 @@ class SystemSettingsController extends Controller
             )),
         ]);
 
-        return redirect()->route('admin.settings.system', $group)
-            ->with('success', SettingsRegistry::group($group)['label'] . ' settings saved.');
+        $message = SettingsRegistry::group($group)['label'] . ' settings saved.';
+        if (session('model_switched')) {
+            $message .= ' The model you chose is not available on this account, so it was set to ' . session('model_switched') . '.';
+        }
+
+        return redirect()->route('admin.settings.system', $group)->with('success', $message);
     }
 
     /** Send a test email / SMS, or ask the AI assistant a test question. */
@@ -111,9 +115,12 @@ class SystemSettingsController extends Controller
             }
 
             $data = $request->validate(['test_question' => ['required', 'string', 'max:300']]);
+            $modelBefore = (string) $settings->get($restaurant->id, 'ai', 'model', '');
             $answer = app(RestaurantAssistant::class)->reply($restaurant, $data['test_question'], force: true);
+            $modelAfter = (string) app(RestaurantSettings::class)->get($restaurant->id, 'ai', 'model', '');
+            $note = $modelAfter !== $modelBefore ? ' (Model ' . $modelBefore . ' is not available on this account, so it was switched to ' . $modelAfter . '.)' : '';
 
-            return back()->with('success', 'Assistant replied: ' . $answer['reply'])->withInput();
+            return back()->with('success', 'Assistant replied: ' . $answer['reply'] . $note)->withInput();
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
@@ -132,7 +139,8 @@ class SystemSettingsController extends Controller
 
         return $count === null
             ? back()->with('error', session('models_error', 'Could not load models. Save a valid API key for ' . AiProviders::get($provider)['label'] . ' first.'))
-            : back()->with('success', 'Loaded ' . $count . ' ' . AiProviders::get($provider)['label'] . ' models. Pick one from the Model list.');
+            : back()->with('success', 'Loaded ' . $count . ' ' . AiProviders::get($provider)['label'] . ' models.'
+                . (session('model_switched') ? ' Your saved model is not available on this account, so it was switched to ' . session('model_switched') . '.' : ' Pick one from the Model list.'));
     }
 
     private function refreshModels(int $restaurantId, string $provider, RestaurantSettings $settings, bool $quiet = false): ?int
@@ -152,6 +160,16 @@ class SystemSettingsController extends Controller
             return null;
         }
         $settings->put($restaurantId, 'ai', 'models_' . $provider, json_encode(array_slice($models, 0, 300)));
+
+        // If the saved model isn't offered by this account, switch to one that is.
+        if ($models !== [] && $settings->get($restaurantId, 'ai', 'provider') === $provider) {
+            $current = (string) $settings->get($restaurantId, 'ai', 'model', '');
+            $picked = AiProviders::pickModel($provider, $models, $current);
+            if ($picked !== null && $picked !== $current) {
+                $settings->put($restaurantId, 'ai', 'model', $picked);
+                session()->flash('model_switched', $picked);
+            }
+        }
 
         return count($models);
     }

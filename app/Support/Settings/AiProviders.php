@@ -65,7 +65,7 @@ final class AiProviders
             'protocol' => 'openai',
             'base_url' => 'https://api.groq.com/openai/v1',
             'default_model' => 'llama-3.3-70b-versatile',
-            'models' => ['llama-3.3-70b-versatile'],
+            'models' => ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
             'key_url' => 'https://console.groq.com/keys',
             'key_hint' => 'Starts with gsk_',
         ],
@@ -97,6 +97,50 @@ final class AiProviders
             'key_hint' => 'From your Together account',
         ],
     ];
+
+    /** Model ids that are not text-chat models (speech, images, embeddings, safety filters...). */
+    private const NON_CHAT = '/(whisper|tts|speech|audio|transcri|embed|guard|moderation|dall-e|image|imagen|realtime|rerank|search|playai|distil|vision-preview|safeguard|prompt-guard|veo|aqa)/i';
+
+    /** Preferred families per provider, best first, used when the saved model is unavailable. */
+    private const PREFER = [
+        'anthropic' => ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude'],
+        'openai' => ['gpt-4.1-mini', 'gpt-4o-mini', 'mini', 'gpt-4', 'gpt'],
+        'gemini' => ['flash', 'pro', 'gemini'],
+        'mistral' => ['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest', 'small', 'mistral'],
+        'deepseek' => ['deepseek-chat', 'chat'],
+        'groq' => ['llama-3.3-70b', 'llama-3.1-8b-instant', 'gpt-oss', 'llama-4', 'qwen', 'llama', 'gemma'],
+        'xai' => ['grok-3-mini', 'mini', 'grok'],
+        'openrouter' => ['openrouter/auto', 'auto'],
+        'together' => ['llama-3.3-70b-instruct', 'instruct', 'chat'],
+    ];
+
+    /**
+     * Choose a usable chat model from a provider's live list: keep $current if
+     * it is listed, else the preset default, else the best preferred family.
+     */
+    public static function pickModel(string $provider, array $available, ?string $current): ?string
+    {
+        $chat = array_values(array_filter(array_map('strval', $available), fn (string $id) => $id !== '' && !preg_match(self::NON_CHAT, $id)));
+        if ($chat === []) {
+            return null;
+        }
+        if ($current !== null && $current !== '' && in_array($current, $chat, true)) {
+            return $current;
+        }
+        $default = self::get($provider)['default_model'];
+        if (in_array($default, $chat, true)) {
+            return $default;
+        }
+        foreach (self::PREFER[$provider] ?? [] as $pattern) {
+            foreach ($chat as $id) {
+                if (stripos($id, $pattern) !== false) {
+                    return $id;
+                }
+            }
+        }
+
+        return $chat[0];
+    }
 
     public static function has(string $provider): bool
     {

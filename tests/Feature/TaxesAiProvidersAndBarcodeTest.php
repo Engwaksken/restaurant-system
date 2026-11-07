@@ -86,6 +86,36 @@ class TaxesAiProvidersAndBarcodeTest extends TestCase
             && str_contains($request['messages'][0]['content'], 'Rolex'));
     }
 
+    public function test_unavailable_model_is_replaced_from_the_providers_list(): void
+    {
+        [$restaurant] = $this->restaurantWithBranch('Z');
+        $owner = $this->staff($restaurant, null);
+        $this->grant($owner, 'settings.system.manage');
+        $this->menuItem($restaurant, 'Rolex', 6000);
+        $models = ['data' => [['id' => 'whisper-large-v3'], ['id' => 'meta-llama/llama-guard-4-12b'], ['id' => 'openai/gpt-oss-20b'], ['id' => 'llama-3.1-8b-instant']]];
+
+        // Saving a key loads the list and swaps a preset model the account doesn't offer.
+        Http::fake(['api.groq.com/openai/v1/models' => Http::response($models)]);
+        $this->actingAs($owner)->put(route('admin.settings.system.update', 'ai'), ['enabled' => '1', 'provider' => 'groq', 'model' => 'llama-3.3-70b-versatile', 'key_groq' => 'gsk_test'])
+            ->assertSessionHas('success', fn ($message) => str_contains($message, 'llama-3.1-8b-instant'));
+        $this->assertSame('llama-3.1-8b-instant', app(RestaurantSettings::class)->get($restaurant->id, 'ai', 'model'));
+
+        // A model that disappears later is recovered at chat time, then the reply is retried.
+        app(RestaurantSettings::class)->put($restaurant->id, 'ai', 'model', 'llama-3.3-70b-versatile');
+        Http::fake([
+            'api.groq.com/openai/v1/models' => Http::response($models),
+            'api.groq.com/openai/v1/chat/completions' => function (HttpRequest $request) {
+                return $request['model'] === 'llama-3.3-70b-versatile'
+                    ? Http::response(['error' => ['message' => 'The model `llama-3.3-70b-versatile` does not exist or you do not have access to it.', 'code' => 'model_not_found']], 404)
+                    : Http::response(['choices' => [['message' => ['content' => 'Try the Rolex!']]]]);
+            },
+        ]);
+
+        $this->post(route('admin.settings.system.test', 'ai'), ['test_question' => 'What do you recommend?'])
+            ->assertSessionHas('success', fn ($message) => str_contains($message, 'Try the Rolex!') && str_contains($message, 'switched to llama-3.1-8b-instant'));
+        $this->assertSame('llama-3.1-8b-instant', app(RestaurantSettings::class)->get($restaurant->id, 'ai', 'model'));
+    }
+
     public function test_ai_requires_the_selected_providers_key(): void
     {
         [$restaurant] = $this->restaurantWithBranch('W');

@@ -55,12 +55,22 @@ class RestaurantAssistant
                 }
                 $model = trim((string) ($ai['model'] ?? '')) ?: $provider['default_model'];
                 $system = $this->systemPrompt($restaurant, $ai);
-
-                $text = match ($provider['protocol']) {
+                $ask = fn (string $model): string => match ($provider['protocol']) {
                     'gemini' => $this->askGemini($provider, $apiKey, $model, $system, $message),
                     'openai' => $this->askOpenAiCompatible($provider, $apiKey, $model, $system, $message),
                     default => $this->askClaude($apiKey, $model, $system, $message),
                 };
+
+                try {
+                    $text = $ask($model);
+                } catch (Throwable $exception) {
+                    // The provider retired or doesn't offer this model: switch to one it lists, save it, retry once.
+                    $replacement = $this->isUnknownModel($exception) ? $this->recoverModel($restaurant->id, $providerKey, $apiKey, $model) : null;
+                    if ($replacement === null) {
+                        throw $exception;
+                    }
+                    $text = $ask($replacement);
+                }
 
                 return ['reply' => $text, 'items' => [], 'source' => 'ai'];
             } catch (Throwable $exception) {
@@ -72,6 +82,34 @@ class RestaurantAssistant
         }
 
         return $this->fallback($restaurant, $message);
+    }
+
+    private function isUnknownModel(Throwable $exception): bool
+    {
+        $status = $exception instanceof \Illuminate\Http\Client\RequestException ? $exception->response->status() : null;
+        $text = Str::lower($exception->getMessage() . ($exception instanceof \Illuminate\Http\Client\RequestException ? ' ' . $exception->response->body() : ''));
+
+        return ($status === null || in_array($status, [400, 404], true))
+            && Str::contains($text, 'model')
+            && Str::contains($text, ['does not exist', 'not found', 'not_found', 'decommissioned', 'deprecated', 'no longer', 'invalid model', 'unknown model', 'not supported', 'do not have access']);
+    }
+
+    /** Load the provider's models, pick a working one, persist it. */
+    private function recoverModel(int $restaurantId, string $providerKey, string $apiKey, string $failedModel): ?string
+    {
+        try {
+            $models = $this->listModels($providerKey, $apiKey);
+        } catch (Throwable) {
+            return null;
+        }
+        $replacement = AiProviders::pickModel($providerKey, $models, null);
+        if ($replacement === null || $replacement === $failedModel) {
+            return null;
+        }
+        $this->settings->put($restaurantId, 'ai', 'models_' . $providerKey, json_encode(array_slice($models, 0, 300)));
+        $this->settings->put($restaurantId, 'ai', 'model', $replacement);
+
+        return $replacement;
     }
 
     private function askClaude(string $apiKey, string $model, string $system, string $message): string
@@ -97,6 +135,8 @@ class RestaurantAssistant
             throw new RuntimeException('The AI provider is busy right now (rate limited). Please try again shortly.');
         } catch (APIConnectionException) {
             throw new RuntimeException('Could not reach the AI provider. Check the server internet connection.');
+        } catch (\Anthropic\Core\Exceptions\NotFoundException) {
+            throw new RuntimeException('The model ' . $model . ' was not found for this API key.');
         } catch (APIStatusException $exception) {
             throw new RuntimeException('The AI provider returned an error (' . $exception->getCode() . ').');
         }

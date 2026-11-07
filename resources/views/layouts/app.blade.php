@@ -891,6 +891,34 @@
             @endif
 
 
+            {{-- Validation errors. Pages that render their own define the
+                 "own-validation-errors" section to avoid duplicates. --}}
+            @if($errors->any() && !\Illuminate\Support\Facades\View::hasSection('own-validation-errors'))
+
+                <div class="alert alert-danger alert-dismissible fade show global-flash-message" role="alert">
+
+                    <i class="fas fa-triangle-exclamation me-2"></i>
+
+                    @if($errors->count() === 1)
+                        {{ $errors->first() }}
+                    @else
+                        <ul class="mb-0 mt-1 ps-3">
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert"
+                            aria-label="Close"></button>
+
+                </div>
+
+            @endif
+
+
             @yield('content')
 
         </div>

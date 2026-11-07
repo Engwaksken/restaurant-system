@@ -31,9 +31,6 @@ $adminModuleRoutes = [
     ['admin.menu-availability.index', 'menu-availability', 'menu.availability'],
 
     // Tables
-    ['admin.floors.index', 'floors', 'tables.floors'],
-    ['admin.tables.index', 'tables', 'tables.tables'],
-    ['admin.reservations.index', 'reservations', 'tables.reservations'],
     ['admin.qr-ordering.index', 'qr-ordering', 'tables.qr'],
 
     // Customers

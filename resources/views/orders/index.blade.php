@@ -3,6 +3,8 @@
 @section('title', $pageTitle)
 @section('page-title', $pageTitle)
 
+@section('own-validation-errors', '1')
+
 @section('content')
 <div class="container-fluid px-0">
 

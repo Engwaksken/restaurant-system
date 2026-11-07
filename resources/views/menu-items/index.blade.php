@@ -3,6 +3,8 @@
 @section('title', 'Menu Items')
 @section('page-title', 'Menu Items')
 
+@section('own-validation-errors', '1')
+
 @section('content')
 <div class="container-fluid px-0">
 

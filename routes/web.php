@@ -16,6 +16,8 @@ use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\PurchasingController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RecipeController;
+use App\Http\Controllers\Admin\ReservationController;
+use App\Http\Controllers\Admin\TableController;
 use App\Http\Controllers\Admin\StockTransferController;
 use App\Http\Controllers\Admin\WastageController;
 use App\Http\Controllers\Auth\AdminLoginController;
@@ -183,6 +185,21 @@ Route::middleware('auth')
             ->whereNumber('order')
             ->middleware('throttle:120,1')
             ->name('kitchen.advance');
+
+        Route::get('/floors', [TableController::class, 'floors'])->name('floors.index');
+        Route::post('/floors', [TableController::class, 'storeFloor'])->name('floors.store');
+        Route::put('/floors/{floor}', [TableController::class, 'updateFloor'])->whereNumber('floor')->name('floors.update');
+        Route::delete('/floors/{floor}', [TableController::class, 'destroyFloor'])->whereNumber('floor')->name('floors.destroy');
+        Route::get('/tables', [TableController::class, 'tables'])->name('tables.index');
+        Route::post('/tables', [TableController::class, 'storeTable'])->name('tables.store');
+        Route::put('/tables/{table}', [TableController::class, 'updateTable'])->whereNumber('table')->name('tables.update');
+        Route::patch('/tables/{table}/status', [TableController::class, 'updateTableStatus'])->whereNumber('table')->name('tables.status');
+        Route::get('/reservations', [ReservationController::class, 'index'])->name('reservations.index');
+        Route::post('/reservations', [ReservationController::class, 'store'])->name('reservations.store');
+        Route::put('/reservations/{reservation}', [ReservationController::class, 'update'])
+            ->whereNumber('reservation')->name('reservations.update');
+        Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])
+            ->whereNumber('reservation')->name('reservations.status');
 
         Route::get('/recipes', [RecipeController::class, 'index'])->name('recipes.index');
         Route::post('/recipes', [RecipeController::class, 'store'])->name('recipes.store');

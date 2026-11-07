@@ -6,6 +6,8 @@ return [
     'tax_rate' => (float) env('RESTAURANT_TAX_RATE', 0),
     'delivery_fee' => (float) env('RESTAURANT_DELIVERY_FEE', 0),
     'kitchen_late_minutes' => (int) env('KITCHEN_LATE_MINUTES', 20),
+    // A table is held this many minutes either side of a reservation time.
+    'reservation_duration_minutes' => (int) env('RESERVATION_DURATION_MINUTES', 120),
     'gateways' => [
         'flutterwave' => [
             'enabled' => (bool) env('FLUTTERWAVE_ENABLED', false),

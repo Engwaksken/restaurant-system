@@ -554,8 +554,17 @@
         <div class="chat-messages" id="chatMessages" aria-live="polite">
             <div class="chat-bubble bot">{{ trim((string) ($aiSettings['greeting'] ?? '')) ?: 'Hello! Ask me about our menu, prices, opening hours or how to order.' }}</div>
         </div>
+        <div id="chatAttachmentPreview" class="chat-attachment-preview" hidden>
+            <span class="chat-attachment-thumb" id="chatAttachmentThumb"><i class="fas fa-file-pdf"></i></span>
+            <span class="chat-attachment-name" id="chatAttachmentName"></span>
+            <button type="button" class="btn btn-sm btn-link text-muted p-0 ms-auto" id="chatAttachmentRemove" aria-label="Remove attachment"><i class="fas fa-xmark"></i></button>
+        </div>
         <form id="chatForm" class="card-footer bg-white p-2 d-flex gap-2 border-top">
-            <input id="chatInput" class="form-control form-control-sm" maxlength="1000" placeholder="Type your message" aria-label="Message" required>
+            <input type="file" id="chatFile" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" hidden>
+            <button type="button" class="btn btn-sm btn-light border chat-attach" id="chatAttach" aria-label="Attach a photo or PDF" title="Attach a photo or PDF">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <input id="chatInput" class="form-control form-control-sm" maxlength="1000" placeholder="Type a message or attach a photo" aria-label="Message">
             <button class="btn btn-primary btn-sm px-3" type="submit" aria-label="Send message">
                 <i class="fas fa-paper-plane"></i>
             </button>
@@ -918,23 +927,126 @@ document.addEventListener('DOMContentLoaded', function () {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // Attachments: one photo or PDF per message. Photos are shrunk on the
+    // device first so uploads stay small and fast on mobile data.
+    const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+    const fileInput = document.getElementById('chatFile');
+    const preview = document.getElementById('chatAttachmentPreview');
+    const previewThumb = document.getElementById('chatAttachmentThumb');
+    const previewName = document.getElementById('chatAttachmentName');
+    let attachment = null;
+
+    function clearAttachment() {
+        attachment = null;
+        fileInput.value = '';
+        preview.hidden = true;
+        previewThumb.replaceChildren(Object.assign(document.createElement('i'), { className: 'fas fa-file-pdf' }));
+    }
+
+    function shrinkImage(file) {
+        if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { return Promise.resolve(file); }
+        return new Promise(resolve => {
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+                if (scale === 1 && file.size < 1.5 * 1024 * 1024) { URL.revokeObjectURL(url); resolve(file); return; }
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+                canvas.toBlob(blob => resolve(blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file), 'image/jpeg', 0.85);
+            };
+            img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+            img.src = url;
+        });
+    }
+
+    document.getElementById('chatAttach').addEventListener('click', () => fileInput.click());
+    document.getElementById('chatAttachmentRemove').addEventListener('click', clearAttachment);
+    fileInput.addEventListener('change', async () => {
+        const chosen = fileInput.files && fileInput.files[0];
+        if (!chosen) { return; }
+        if (!/^image\/(jpeg|png|webp|gif)$|^application\/pdf$/.test(chosen.type)) {
+            addBubble('Please attach a photo (JPG, PNG, WebP or GIF) or a PDF.');
+            clearAttachment();
+            return;
+        }
+        const ready = await shrinkImage(chosen);
+        if (ready.size > MAX_UPLOAD_BYTES) {
+            addBubble('That file is too large. Please send one under 5 MB.');
+            clearAttachment();
+            return;
+        }
+        attachment = ready;
+        previewName.textContent = chosen.name;
+        if (ready.type.startsWith('image/')) {
+            const thumb = document.createElement('img');
+            thumb.src = URL.createObjectURL(ready);
+            thumb.alt = '';
+            previewThumb.replaceChildren(thumb);
+        }
+        preview.hidden = false;
+        chatInput.focus();
+    });
+
+    function addUserBubble(message, file) {
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble user';
+        if (file) {
+            if (file.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.alt = 'Attached photo';
+                img.className = 'chat-bubble-image';
+                bubble.append(img);
+            } else {
+                const label = document.createElement('div');
+                label.className = 'chat-bubble-file';
+                label.append(Object.assign(document.createElement('i'), { className: 'fas fa-file-pdf me-1' }), document.createTextNode(file.name));
+                bubble.append(label);
+            }
+        }
+        if (message) {
+            bubble.append(document.createTextNode(message));
+        }
+        chatMessages.append(bubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     chatForm.addEventListener('submit', async event => {
         event.preventDefault();
         const message = chatInput.value.trim();
-        if (!message) return;
+        const file = attachment;
+        if (!message && !file) return;
 
-        addBubble(message, [], 'user');
+        addUserBubble(message, file);
         chatInput.value = '';
+        clearAttachment();
+
+        const body = new FormData();
+        if (message) { body.append('message', message); }
+        if (file) { body.append('file', file, file.name); }
+
+        const typing = document.createElement('div');
+        typing.className = 'chat-bubble bot chat-typing';
+        typing.textContent = file ? 'Looking at your file...' : '...';
+        chatMessages.append(typing);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
 
         try {
             const response = await fetch('/api/v1/chat/message', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ message }),
+                headers: { 'Accept': 'application/json' },
+                body,
             });
             const data = await response.json();
-            addBubble(data.reply || 'Sorry, something went wrong. Please try again.', data.items || []);
+            typing.remove();
+            const errorText = data.errors ? Object.values(data.errors).flat()[0] : null;
+            addBubble(errorText || data.reply || 'Sorry, something went wrong. Please try again.', data.items || []);
         } catch (error) {
+            typing.remove();
             addBubble('Sorry, the assistant is unavailable right now. Please try again later.');
         }
     });

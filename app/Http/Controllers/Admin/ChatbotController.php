@@ -56,8 +56,15 @@ class ChatbotController extends Controller
     {
         $user = $request->user();
         abort_unless($user && $user->restaurant_id, 403);
-        $data = $request->validate(['message' => ['required', 'string', 'max:1000']]);
-        $answer = $assistant->reply(\App\Models\Restaurant::query()->findOrFail($user->restaurant_id), $data['message']);
+        $data = $request->validate([
+            'message' => ['nullable', 'required_without:file', 'string', 'max:1000'],
+            'file' => \App\Services\Ai\ChatAttachment::rules(),
+        ]);
+        $answer = $assistant->reply(
+            \App\Models\Restaurant::query()->findOrFail($user->restaurant_id),
+            (string) ($data['message'] ?? ''),
+            attachment: \App\Services\Ai\ChatAttachment::fromUpload($request->file('file')),
+        );
 
         return response()->json(['reply' => $answer['reply'], 'items' => $answer['items']]);
     }

@@ -1017,12 +1017,22 @@
         </div>
 
 
+        <div class="chatbot-attachment" id="chatbotAttachment" hidden>
+            <i class="fas fa-paperclip me-1"></i><span id="chatbotAttachmentName"></span>
+            <button type="button" id="chatbotAttachmentRemove" aria-label="Remove attachment"><i class="fas fa-xmark"></i></button>
+        </div>
+
         <form class="chatbot-form"
               id="chatbotForm">
 
+            <input type="file" id="chatbotFile" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" hidden>
+            <button type="button" class="chatbot-attach" id="chatbotAttach" aria-label="Attach a photo or PDF" title="Attach a photo or PDF">
+                <i class="fas fa-paperclip"></i>
+            </button>
+
             <input type="text"
                    id="chatbotInput"
-                   placeholder="Type your message...">
+                   placeholder="Type a message or attach a file...">
 
             <button type="submit">
 

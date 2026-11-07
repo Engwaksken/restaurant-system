@@ -311,6 +311,36 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
 
+    // Optional attachment: one photo or PDF per message (max 5 MB).
+    const chatbotFile = document.getElementById('chatbotFile');
+    const chatbotAttachment = document.getElementById('chatbotAttachment');
+    const chatbotAttachmentName = document.getElementById('chatbotAttachmentName');
+    let chatbotUpload = null;
+
+    function clearChatbotAttachment() {
+        chatbotUpload = null;
+        if (chatbotFile) { chatbotFile.value = ''; }
+        if (chatbotAttachment) { chatbotAttachment.hidden = true; }
+    }
+
+    document.getElementById('chatbotAttach')?.addEventListener('click', function () { chatbotFile?.click(); });
+    document.getElementById('chatbotAttachmentRemove')?.addEventListener('click', clearChatbotAttachment);
+    chatbotFile?.addEventListener('change', function () {
+        const chosen = chatbotFile.files && chatbotFile.files[0];
+        if (!chosen) { return; }
+        if (chosen.size > 5 * 1024 * 1024) {
+            clearChatbotAttachment();
+            const warning = document.createElement('div');
+            warning.className = 'chat-message bot';
+            warning.textContent = 'That file is too large. Please send one under 5 MB.';
+            chatMessages.appendChild(warning);
+            return;
+        }
+        chatbotUpload = chosen;
+        chatbotAttachmentName.textContent = chosen.name;
+        chatbotAttachment.hidden = false;
+    });
+
     chatbotForm?.addEventListener(
         'submit',
         function (event) {
@@ -319,8 +349,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const message =
                 chatbotInput.value.trim();
+            const file = chatbotUpload;
 
-            if (!message) {
+            if (!message && !file) {
                 return;
             }
 
@@ -331,34 +362,52 @@ document.addEventListener('DOMContentLoaded', function () {
             userMessage.className =
                 'chat-message user';
 
-            userMessage.textContent =
-                message;
+            if (file && file.type.startsWith('image/')) {
+                const preview = document.createElement('img');
+                preview.src = URL.createObjectURL(file);
+                preview.alt = 'Attached photo';
+                preview.className = 'chat-message-image';
+                userMessage.appendChild(preview);
+            } else if (file) {
+                const label = document.createElement('div');
+                label.className = 'fw-semibold';
+                label.textContent = file.name;
+                userMessage.appendChild(label);
+            }
+            if (message) {
+                userMessage.appendChild(document.createTextNode(message));
+            }
 
             chatMessages.appendChild(
                 userMessage
             );
 
             chatbotInput.value = '';
+            clearChatbotAttachment();
+
+            const body = new FormData();
+            if (message) { body.append('message', message); }
+            if (file) { body.append('file', file, file.name); }
 
 
             const botMessage = document.createElement('div');
             botMessage.className = 'chat-message bot';
-            botMessage.textContent = '...';
+            botMessage.textContent = file ? 'Looking at your file...' : '...';
             chatMessages.appendChild(botMessage);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
             fetch('/admin/chatbot/ask', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
                 },
-                body: JSON.stringify({ message: message })
+                body: body
             })
                 .then(function (response) { return response.json(); })
                 .then(function (data) {
-                    let text = data.reply || 'Sorry, something went wrong.';
+                    const errorText = data.errors ? Object.values(data.errors).flat()[0] : null;
+                    let text = errorText || data.reply || 'Sorry, something went wrong.';
                     (data.items || []).forEach(function (item) {
                         text += '\n' + item.name + ', ' + Number(item.price).toLocaleString();
                     });

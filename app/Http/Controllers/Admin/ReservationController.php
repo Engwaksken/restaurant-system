@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\ScopesToUserBranches;
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Reservation;
 use App\Models\RestaurantTable;
 use App\Models\User;
@@ -73,12 +74,13 @@ class ReservationController extends Controller
             'reserved_at' => ['required', 'date', 'after:now'],
         ]);
 
-        $reservation = DB::transaction(function () use ($data): Reservation {
+        $reservation = DB::transaction(function () use ($data, $user): Reservation {
             $at = Carbon::parse($data['reserved_at']);
             $this->assertTableAvailable((int) $data['branch_id'], $data['restaurant_table_id'] ?? null, $at, (int) $data['guest_count']);
 
             return Reservation::create([
                 'branch_id' => $data['branch_id'],
+                'customer_id' => $this->customerFor($user, $data['phone'], $data['guest_name'])->id,
                 'restaurant_table_id' => $data['restaurant_table_id'] ?? null,
                 'reservation_number' => $this->uniqueNumber(),
                 'guest_name' => $data['guest_name'],
@@ -115,7 +117,11 @@ class ReservationController extends Controller
             }
             $this->assertTableAvailable($record->branch_id, $data['restaurant_table_id'] ?? null, $at, (int) $data['guest_count'], $record->id);
 
+            $phone = trim($data['phone']);
             $record->update([
+                'customer_id' => $phone === $record->phone && $record->customer_id
+                    ? $record->customer_id
+                    : $this->customerFor($user, $phone, $data['guest_name'])->id,
                 'restaurant_table_id' => $data['restaurant_table_id'] ?? null,
                 'guest_name' => $data['guest_name'],
                 'phone' => $data['phone'],
@@ -217,6 +223,15 @@ class ReservationController extends Controller
             throw ValidationException::withMessages(['restaurant_table_id' => 'Table ' . $table->name . ' is already booked at '
                 . $conflict->reserved_at->format('H:i') . ' (' . $conflict->reservation_number . ').']);
         }
+    }
+
+    /** Link to the restaurant's customer with this phone, creating one like public orders do. */
+    private function customerFor(User $user, string $phone, string $name): Customer
+    {
+        return Customer::query()->firstOrCreate(
+            ['restaurant_id' => $user->restaurant_id, 'phone' => trim($phone)],
+            ['name' => $name],
+        );
     }
 
     private function uniqueNumber(): string

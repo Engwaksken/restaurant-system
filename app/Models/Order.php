@@ -2,7 +2,7 @@
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo,HasMany};
+use Illuminate\Database\Eloquent\Relations\{BelongsTo,HasMany,HasOne};
 class Order extends Model {
     use SoftDeletes;
 
@@ -28,4 +28,5 @@ class Order extends Model {
     public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
     public function items(): HasMany { return $this->hasMany(OrderItem::class); }
     public function payments(): HasMany { return $this->hasMany(Payment::class); }
+    public function feedback(): HasOne { return $this->hasOne(OrderFeedback::class); }
 }

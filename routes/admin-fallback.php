@@ -34,9 +34,7 @@ $adminModuleRoutes = [
     ['admin.qr-ordering.index', 'qr-ordering', 'tables.qr'],
 
     // Customers
-    ['admin.customers.index', 'customers', 'customers.customers'],
     ['admin.loyalty.index', 'loyalty', 'customers.loyalty'],
-    ['admin.feedback.index', 'feedback', 'customers.feedback'],
     ['admin.customer-accounts.index', 'customer-accounts', 'customers.accounts'],
 
     // Inventory

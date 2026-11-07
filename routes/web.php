@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\ChatbotController;
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExpenseController;
+use App\Http\Controllers\Admin\FeedbackController;
 use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\MenuCategoryController;
 use App\Http\Controllers\Admin\OrderController;
@@ -23,6 +25,7 @@ use App\Http\Controllers\Admin\WastageController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Public\PublicOrderController;
+use App\Http\Controllers\Public\PublicOrderFeedbackController;
 use App\Http\Controllers\Public\PublicOrderPaymentController;
 use Illuminate\Support\Facades\Route;
 
@@ -63,6 +66,10 @@ Route::prefix('order')
             '/track/{order}',
             [PublicOrderController::class, 'track']
         )->middleware('throttle:60,1')->name('track');
+
+        Route::post('/feedback/{order}', [PublicOrderFeedbackController::class, 'store'])
+            ->middleware('throttle:5,1')
+            ->name('feedback');
 
         Route::post('/pay/{order}', [PublicOrderPaymentController::class, 'pay'])
             ->middleware('throttle:5,1')
@@ -200,6 +207,12 @@ Route::middleware('auth')
             ->whereNumber('reservation')->name('reservations.update');
         Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])
             ->whereNumber('reservation')->name('reservations.status');
+
+        Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+        Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customer}', [CustomerController::class, 'show'])->whereNumber('customer')->name('customers.show');
+        Route::put('/customers/{customer}', [CustomerController::class, 'update'])->whereNumber('customer')->name('customers.update');
+        Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback.index');
 
         Route::get('/recipes', [RecipeController::class, 'index'])->name('recipes.index');
         Route::post('/recipes', [RecipeController::class, 'store'])->name('recipes.store');

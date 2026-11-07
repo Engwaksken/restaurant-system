@@ -24,7 +24,7 @@ return new class extends Migration {
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('reviewed_at')->nullable();
             $table->text('review_notes')->nullable();
-            $table->timestamp('opened_at');
+            $table->timestamp('opened_at')->useCurrent();
             $table->timestamp('closed_at')->nullable();
             $table->timestamps();
             $table->index(['branch_id', 'status']);

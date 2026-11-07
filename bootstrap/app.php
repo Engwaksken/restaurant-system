@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectUsersTo(fn () => route('admin.dashboard'));
         $middleware->web(append: [
             \App\Http\Middleware\EnsureUserIsActive::class,
         ]);

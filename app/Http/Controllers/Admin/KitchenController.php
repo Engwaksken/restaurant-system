@@ -157,6 +157,10 @@ class KitchenController extends Controller
             'to' => $data['to'],
         ]);
 
+        if ($data['to'] === 'ready') {
+            app(\App\Services\Notifications\SmsService::class)->orderReady($result);
+        }
+
         $label = $data['to'] === 'ready' ? 'is ready' : 'is being prepared';
 
         return back()->with('success', 'Order ' . $result->order_number . ' ' . $label . '.');

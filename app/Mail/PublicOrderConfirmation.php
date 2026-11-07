@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Order;
+use App\Services\Settings\MailSettings;
 use App\Support\Brand;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -27,12 +28,17 @@ class PublicOrderConfirmation extends Mailable
             ->subject('Order ' . $this->order->order_number . ' received - ' . $brand->name())
             ->view('mail.orders.confirmation', ['brand' => $brand]);
 
-        // Keep the configured sending address (SPF/DKIM) but show the restaurant's name.
+        // Keep the configured sending address (SPF/DKIM) but show the restaurant's name
+        // (or the "From name" set in Email settings, applied by MailSettings).
         if (config('mail.from.address')) {
-            $mail->from((string) config('mail.from.address'), $brand->name());
+            $fromName = (string) config('mail.from.name');
+            $mail->from((string) config('mail.from.address'), $fromName !== '' && $fromName !== config('app.name') ? $fromName : $brand->name());
         }
-        if ($brand->email()) {
-            $mail->replyTo($brand->email(), $brand->name());
+        $replyTo = $this->order->branch?->restaurant
+            ? app(MailSettings::class)->replyTo($this->order->branch->restaurant)
+            : $brand->email();
+        if ($replyTo) {
+            $mail->replyTo($replyTo, $brand->name());
         }
 
         return $mail;

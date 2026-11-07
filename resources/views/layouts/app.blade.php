@@ -904,6 +904,7 @@
 {{-- =============================================================
      ACCESSIBILITY
 ============================================================= --}}
+@if(app(\App\Services\Settings\RestaurantSettings::class)->enabled(auth()->user()?->restaurant_id, 'accessibility', 'show_in_admin'))
 <div class="accessibility-widget">
 
     <button type="button"
@@ -962,6 +963,7 @@
     </div>
 
 </div>
+@endif
 
 
 {{-- =============================================================

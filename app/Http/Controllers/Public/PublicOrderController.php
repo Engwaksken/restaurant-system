@@ -6,6 +6,9 @@ namespace App\Http\Controllers\Public;
 
 use App\Services\Orders\OrderNumberGenerator;
 use App\Services\Payments\GatewaySettings;
+use App\Services\Notifications\SmsService;
+use App\Services\Settings\MailSettings;
+use App\Models\ManualPaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Mail\PublicOrderConfirmation;
 use App\Models\Branch;
@@ -40,13 +43,16 @@ class PublicOrderController extends Controller
             : null;
 
         $paymentGateways = array_keys($this->enabledGateways($restaurant));
+        $manualOptions = $this->manualMethods($restaurant->id)->map->optionKey()->all();
         $paymentOption = $request->input('payment_option');
+        // Card gateways need an email for the receipt; mobile money and offline methods do not.
+        $needsEmail = in_array($paymentOption, ['flutterwave', 'pesapal'], true);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:40'],
-            'email' => [$paymentOption === 'cash_on_delivery' ? 'nullable' : 'required', 'email', 'max:255'],
-            'payment_option' => ['required', Rule::in(['cash_on_delivery', ...$paymentGateways])],
+            'email' => [$needsEmail ? 'required' : 'nullable', 'email', 'max:255'],
+            'payment_option' => ['required', Rule::in(['cash_on_delivery', ...$paymentGateways, ...$manualOptions])],
             'address' => ['nullable', 'string', 'max:1000'],
             'branch_id' => [
                 Rule::requiredIf($singleBranchId === null),
@@ -123,16 +129,19 @@ class PublicOrderController extends Controller
         [$orderRecord, $trackingToken] = $order;
 
         $email = $validated['email'] ?? $orderRecord->customer?->email;
-        if ($email) {
+        $mailSettings = app(MailSettings::class);
+        if ($email && $mailSettings->sendsOrderConfirmations($restaurant)) {
             try {
+                $mailSettings->apply($restaurant);
                 Mail::to($email)->send(new PublicOrderConfirmation($orderRecord, $trackingToken));
             } catch (\Throwable $exception) {
                 report($exception);
             }
         }
+        app(SmsService::class)->orderPlaced($orderRecord, route('order.track', $trackingToken));
 
         $redirect = redirect()->route('order.success', ['order' => $trackingToken]);
-        if ($validated['payment_option'] !== 'cash_on_delivery') {
+        if (in_array($validated['payment_option'], $paymentGateways, true)) {
             $redirect->with('start_payment_gateway', $validated['payment_option']);
         }
 
@@ -155,6 +164,7 @@ class PublicOrderController extends Controller
             'trackingToken' => $order,
             'gateways' => $gateways,
             'startPaymentGateway' => $startPaymentGateway,
+            ...$this->paymentContext($record, $gateways),
         ])
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Referrer-Policy', 'no-referrer');
@@ -163,11 +173,13 @@ class PublicOrderController extends Controller
     public function track(string $order): Response
     {
         $record = $this->findPublicOrder($order);
+        $gateways = $this->enabledGateways($record->branch?->restaurant);
 
         return response()->view('public.orders.track', [
             'order' => $record,
             'trackingToken' => $order,
-            'gateways' => $this->enabledGateways($record->branch?->restaurant),
+            'gateways' => $gateways,
+            ...$this->paymentContext($record, $gateways),
         ])
             ->header('Cache-Control', 'private, no-store, max-age=0')
             ->header('Referrer-Policy', 'no-referrer');
@@ -181,6 +193,32 @@ class PublicOrderController extends Controller
             ->where('tracking_token_hash', hash('sha256', $token))
             ->with(['items', 'branch.restaurant', 'feedback'])
             ->firstOrFail();
+    }
+
+    /** Readable payment choice, offline instructions and any payment awaiting approval. */
+    private function paymentContext(Order $order, array $gateways): array
+    {
+        $preference = (string) $order->payment_preference;
+        $manualMethod = str_starts_with($preference, 'manual_')
+            ? ManualPaymentMethod::query()->where('restaurant_id', $order->branch?->restaurant_id)->find((int) substr($preference, 7))
+            : null;
+        $label = match (true) {
+            $preference === '' => null,
+            $preference === 'cash_on_delivery' => 'Pay on delivery or pickup',
+            $manualMethod !== null => $manualMethod->name,
+            default => GatewaySettings::GATEWAYS[$preference]['label'] ?? ($gateways[$preference] ?? ucfirst($preference)),
+        };
+
+        return [
+            'paymentLabel' => $label ?? 'Not chosen',
+            'manualMethod' => $manualMethod,
+            'pendingPayment' => $order->payments()->where('status', 'pending')->latest('id')->first(),
+        ];
+    }
+
+    private function manualMethods(int $restaurantId)
+    {
+        return ManualPaymentMethod::query()->where('restaurant_id', $restaurantId)->where('is_active', true)->orderBy('display_order')->orderBy('name')->get();
     }
 
     /** Online gateways ready for this restaurant (admin settings, else .env). */

@@ -48,8 +48,17 @@ class ChatbotController extends Controller
         return view('admin.chatbot.show', ['conversation' => $record, 'messages' => $messages]);
     }
 
-    public function ask(Request $request): JsonResponse
+    /**
+     * Staff chat widget. Uses the same assistant as the website, scoped to the
+     * user's own restaurant and limited to public menu and contact details.
+     */
+    public function ask(Request $request, \App\Services\Ai\RestaurantAssistant $assistant): JsonResponse
     {
-        abort(404, 'The admin chatbot is unavailable until conversations are tenant-scoped.');
+        $user = $request->user();
+        abort_unless($user && $user->restaurant_id, 403);
+        $data = $request->validate(['message' => ['required', 'string', 'max:1000']]);
+        $answer = $assistant->reply(\App\Models\Restaurant::query()->findOrFail($user->restaurant_id), $data['message']);
+
+        return response()->json(['reply' => $answer['reply'], 'items' => $answer['items']]);
     }
 }

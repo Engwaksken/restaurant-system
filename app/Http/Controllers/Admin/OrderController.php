@@ -83,6 +83,32 @@ class OrderController extends Controller
         ]);
     }
 
+    /** Printable customer receipt laid out with the Receipt settings. */
+    public function receipt(Order $order): View
+    {
+        return $this->printable($order, 'orders.receipt', 'receipt');
+    }
+
+    /** Printable invoice laid out with the Invoice settings. */
+    public function invoice(Order $order): View
+    {
+        return $this->printable($order, 'orders.invoice', 'invoice');
+    }
+
+    private function printable(Order $order, string $view, string $group): View
+    {
+        $this->authorizeOrder($order, 'orders.view');
+        $order->load(['items', 'branch.restaurant', 'customer:id,name,phone,email,address', 'waiter:id,name', 'payments' => fn ($query) => $query->where('status', 'successful')]);
+        $restaurant = $order->branch?->restaurant;
+
+        return view($view, [
+            'order' => $order,
+            'brand' => \App\Support\Brand::for($restaurant),
+            'restaurant' => $restaurant,
+            'settings' => app(\App\Services\Settings\RestaurantSettings::class)->group($restaurant?->id, $group),
+        ]);
+    }
+
     public function updateStatus(Request $request, Order $order, LoyaltyService $loyalty): RedirectResponse
     {
         $this->authorizeOrder($order, 'orders.update');
@@ -106,6 +132,10 @@ class OrderController extends Controller
                 $loyalty->returnRedeemed($locked, $userId);
             }
         });
+
+        if ($validated['status'] === 'ready') {
+            app(\App\Services\Notifications\SmsService::class)->orderReady($order->fresh());
+        }
 
         return back()->with('success', 'Order status updated successfully.');
     }

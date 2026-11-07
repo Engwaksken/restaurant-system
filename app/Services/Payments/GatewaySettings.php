@@ -45,6 +45,21 @@ class GatewaySettings
             ],
             'required' => ['consumer_key', 'consumer_secret', 'notification_id'],
         ],
+        'iotec' => [
+            'label' => 'ioTec Pay',
+            'icon' => 'fas fa-mobile-screen-button',
+            'description' => 'MTN and Airtel mobile money in Uganda. Customers approve a payment prompt on their phone.',
+            'docs' => 'https://pay.iotec.io/docs',
+            'base_urls' => ['test' => 'https://pay.iotec.io', 'live' => 'https://pay.iotec.io'],
+            'fields' => [
+                'client_id' => ['label' => 'Client ID', 'secret' => false, 'help' => 'From your ioTec Pay account under API credentials.'],
+                'client_secret' => ['label' => 'Client secret', 'secret' => true, 'help' => 'From your ioTec Pay account under API credentials.'],
+                'wallet_id' => ['label' => 'Wallet ID', 'secret' => false, 'help' => 'The ioTec wallet that receives customer payments.'],
+            ],
+            'required' => ['client_id', 'client_secret', 'wallet_id'],
+            // Payment is approved on the customer's phone, not on a hosted checkout page.
+            'flow' => 'prompt',
+        ],
     ];
 
     /** Override config('restaurant.gateways') with this restaurant's saved settings. */

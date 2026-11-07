@@ -71,22 +71,11 @@
                 @if($order->payment_preference)
                     <div class="d-flex justify-content-between small mb-2">
                         <span class="text-muted">Payment method</span>
-                        <span>{{ $order->payment_preference === 'cash_on_delivery' ? 'Pay on delivery or pickup' : ucfirst($order->payment_preference) }}</span>
+                        <span>{{ $paymentLabel }}</span>
                     </div>
                 @endif
 
-                @if((float) $order->balance > 0 && $gateways !== [] && filter_var($order->customer?->email, FILTER_VALIDATE_EMAIL))
-                    <div class="mt-3">
-                        <div class="small fw-semibold mb-2">Pay securely online</div>
-                        @foreach($gateways as $gateway => $label)
-                            <form method="POST" action="{{ route('order.pay', $trackingToken) }}">
-                                @csrf
-                                <input type="hidden" name="gateway" value="{{ $gateway }}">
-                                <button class="btn btn-success w-100 mb-2" type="submit">Pay with {{ $label }}</button>
-                            </form>
-                        @endforeach
-                    </div>
-                @endif
+                @include('public.orders.partials.pay-online')
             </section>
 
             @if($order->feedback)

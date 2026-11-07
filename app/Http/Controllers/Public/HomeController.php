@@ -47,13 +47,21 @@ class HomeController extends Controller
         $gatewaySettings = app(\App\Services\Payments\GatewaySettings::class);
         $gatewaySettings->apply($restaurant);
         $paymentGateways = $gatewaySettings->enabled();
+        $manualMethods = \App\Models\ManualPaymentMethod::query()
+            ->where('restaurant_id', $restaurant->id)->where('is_active', true)
+            ->orderBy('display_order')->orderBy('name')->get();
+        $accessibility = app(\App\Services\Settings\RestaurantSettings::class)->group($restaurant->id, 'accessibility');
+        $aiSettings = app(\App\Services\Settings\RestaurantSettings::class)->group($restaurant->id, 'ai');
 
         return view('public.home', compact(
             'categories',
             'menuItems',
             'branches',
             'restaurant',
-            'paymentGateways'
+            'paymentGateways',
+            'manualMethods',
+            'accessibility',
+            'aiSettings'
         ));
     }
 }

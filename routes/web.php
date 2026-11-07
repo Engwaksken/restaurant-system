@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\BranchController;
+use App\Http\Controllers\Admin\SystemSettingsController;
 use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\CashRegisterController;
 use App\Http\Controllers\Admin\PayrollController;
@@ -240,6 +242,25 @@ Route::middleware('auth')
         Route::put('/settings/restaurant', [BrandingController::class, 'update'])->name('settings.restaurant.update');
 
         Route::get('/settings/payment-gateways', [PaymentGatewayController::class, 'edit'])->name('settings.payment-gateways');
+        Route::post('/settings/payment-methods', [PaymentGatewayController::class, 'storeMethod'])->name('settings.payment-methods.store');
+        Route::put('/settings/payment-methods/{method}', [PaymentGatewayController::class, 'updateMethod'])->whereNumber('method')->name('settings.payment-methods.update');
+        Route::delete('/settings/payment-methods/{method}', [PaymentGatewayController::class, 'destroyMethod'])->whereNumber('method')->name('settings.payment-methods.destroy');
+
+        Route::get('/settings/backups', [BackupController::class, 'index'])->name('settings.backups');
+        Route::put('/settings/backups', [BackupController::class, 'updateSchedule'])->name('settings.backups.schedule');
+        Route::post('/settings/backups', [BackupController::class, 'store'])->middleware('throttle:6,1')->name('settings.backups.store');
+        Route::get('/settings/backups/{file}', [BackupController::class, 'download'])->where('file', '[A-Za-z0-9_.-]+')->name('settings.backups.download');
+        Route::delete('/settings/backups/{file}', [BackupController::class, 'destroy'])->where('file', '[A-Za-z0-9_.-]+')->name('settings.backups.destroy');
+
+        Route::get('/settings/{group}', [SystemSettingsController::class, 'edit'])
+            ->whereIn('group', SystemSettingsController::PAGES)->name('settings.system');
+        Route::put('/settings/{group}', [SystemSettingsController::class, 'update'])
+            ->whereIn('group', SystemSettingsController::PAGES)->name('settings.system.update');
+        Route::post('/settings/{group}/test', [SystemSettingsController::class, 'test'])
+            ->whereIn('group', ['email', 'sms', 'ai'])->middleware('throttle:10,1')->name('settings.system.test');
+
+        Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt'])->whereNumber('order')->name('orders.receipt');
+        Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->whereNumber('order')->name('orders.invoice');
         Route::put('/settings/payment-gateways/{gateway}', [PaymentGatewayController::class, 'update'])
             ->where('gateway', '[a-z]+')
             ->name('settings.payment-gateways.update');

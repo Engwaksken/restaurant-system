@@ -29,7 +29,7 @@
         </div>
     </section>
 
-    @if($startPaymentGateway && (float) $order->balance > 0 && filter_var($order->customer?->email, FILTER_VALIDATE_EMAIL))
+    @if($startPaymentGateway && (float) $order->balance > 0 && ($startPaymentGateway === 'iotec' ? \App\Services\Payments\IotecGateway::payerNumber($order->customer?->phone) !== null : filter_var($order->customer?->email, FILTER_VALIDATE_EMAIL)))
         <section class="card order-card p-3 mb-4">
             <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
                 <div>
@@ -95,7 +95,7 @@
                 </div>
                 <div class="d-flex justify-content-between small mb-1">
                     <span class="text-muted">Payment method</span>
-                    <span>{{ $order->payment_preference === 'cash_on_delivery' ? 'Pay on delivery or pickup' : ucfirst((string) $order->payment_preference) }}</span>
+                    <span>{{ $paymentLabel }}</span>
                 </div>
                 @if((float) $order->delivery_fee > 0)
                     <div class="d-flex justify-content-between small mb-1">
@@ -114,22 +114,7 @@
                     </span>
                 </div>
 
-                @if((float) $order->balance > 0 && $gateways !== [] && filter_var($order->customer?->email, FILTER_VALIDATE_EMAIL))
-                    <div class="mt-4">
-                        <div class="small fw-semibold mb-2">Pay securely online</div>
-                        @foreach($gateways as $gateway => $label)
-                            <form method="POST" action="{{ route('order.pay', $trackingToken) }}">
-                                @csrf
-                                <input type="hidden" name="gateway" value="{{ $gateway }}">
-                                <button class="btn btn-success w-100 mb-2" type="submit">Pay with {{ $label }}</button>
-                            </form>
-                        @endforeach
-                    </div>
-                @endif
-
-                @if((float) $order->balance > 0 && $gateways !== [] && !filter_var($order->customer?->email, FILTER_VALIDATE_EMAIL))
-                    <p class="small text-muted mt-3 mb-0">Add a valid email to your order to enable online payment, or contact the restaurant.</p>
-                @endif
+                @include('public.orders.partials.pay-online')
 
                 <div class="d-grid gap-2 mt-4">
                     <a class="btn btn-primary" href="{{ route('order.track', $trackingToken) }}">

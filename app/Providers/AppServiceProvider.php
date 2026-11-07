@@ -15,6 +15,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(BrandResolver::class);
+        $this->app->scoped(\App\Services\Settings\RestaurantSettings::class);
     }
 
     /**

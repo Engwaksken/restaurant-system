@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payments\FlutterwaveGateway;
 use App\Services\Payments\GatewaySettings;
+use App\Services\Payments\IotecGateway;
 use App\Services\Payments\PesapalGateway;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,11 +23,17 @@ class PublicOrderPaymentController extends Controller
         string $order,
         FlutterwaveGateway $flutterwave,
         PesapalGateway $pesapal,
+        IotecGateway $iotec,
     ): RedirectResponse {
         $record = $this->findPublicOrder($order);
-        $data = $request->validate(['gateway' => ['required', 'in:flutterwave,pesapal']]);
-        abort_unless(filter_var($record->customer?->email, FILTER_VALIDATE_EMAIL), 422, 'A valid email address is required for online payment.');
+        $data = $request->validate(['gateway' => ['required', 'in:flutterwave,pesapal,iotec']]);
         $provider = $data['gateway'];
+        if ($provider === 'iotec') {
+            abort_unless(IotecGateway::payerNumber($record->customer?->phone) !== null, 422, 'A valid MTN or Airtel Uganda phone number is required for mobile money.');
+            abort_if((float) $record->balance < IotecGateway::MINIMUM_AMOUNT, 422, 'Mobile money payments must be at least ' . IotecGateway::MINIMUM_AMOUNT . '.');
+        } else {
+            abort_unless(filter_var($record->customer?->email, FILTER_VALIDATE_EMAIL), 422, 'A valid email address is required for online payment.');
+        }
         $gatewaySettings = app(GatewaySettings::class);
         $gatewaySettings->apply($record->branch?->restaurant);
         $settings = (array) config('restaurant.gateways.' . $provider, []);
@@ -56,6 +63,32 @@ class PublicOrderPaymentController extends Controller
         try {
             $customer = $record->customer;
             $returnUrl = route('order.payment.return', ['order' => $order, 'payment' => $payment->id]);
+            if ($provider === 'iotec') {
+                $response = $iotec->collect([
+                    'category' => 'MobileMoney',
+                    'currency' => strtoupper((string) config('restaurant.currency')),
+                    'walletId' => (string) $settings['wallet_id'],
+                    'externalId' => $payment->transaction_reference,
+                    'payer' => IotecGateway::payerNumber($customer?->phone),
+                    'payerName' => mb_substr((string) $customer?->name, 0, 150),
+                    'amount' => (float) $payment->amount,
+                    'payerNote' => mb_substr('Order ' . $record->order_number, 0, 100),
+                    'payeeNote' => mb_substr('Order ' . $record->order_number, 0, 100),
+                    'transactionChargesCategory' => 'ChargeWallet',
+                ]);
+                $payment->gateway_response = $response;
+                if (strtolower((string) ($response['status'] ?? '')) === 'failed') {
+                    $payment->status = 'failed';
+                    $payment->save();
+
+                    return redirect()->route('order.track', $order)->with('error', 'Mobile money payment could not start: ' . mb_strimwidth((string) ($response['statusMessage'] ?? 'please try again.'), 0, 120, '...'));
+                }
+                $payment->save();
+
+                return redirect()->route('order.track', $order)
+                    ->with('success', 'Check your phone and approve the mobile money prompt. Then tap "I have approved the payment" below.');
+            }
+
             if ($provider === 'flutterwave') {
                 $response = $flutterwave->initiate([
                     'tx_ref' => $payment->transaction_reference,
@@ -124,6 +157,7 @@ class PublicOrderPaymentController extends Controller
         int $payment,
         FlutterwaveGateway $flutterwave,
         PesapalGateway $pesapal,
+        IotecGateway $iotec,
     ): RedirectResponse {
         $record = $this->findPublicOrder($order);
         $attempt = Payment::query()
@@ -137,7 +171,7 @@ class PublicOrderPaymentController extends Controller
         abort_unless($attempt->status === 'pending', 404);
 
         $provider = $attempt->payment_method;
-        abort_unless(in_array($provider, ['flutterwave', 'pesapal'], true), 404);
+        abort_unless(in_array($provider, ['flutterwave', 'pesapal', 'iotec'], true), 404);
         // Verify with the same restaurant credentials that started the checkout.
         app(GatewaySettings::class)->apply($record->branch?->restaurant);
         $verificationReference = $provider === 'pesapal'
@@ -146,9 +180,11 @@ class PublicOrderPaymentController extends Controller
         abort_unless($verificationReference !== '', 422, 'The payment reference is unavailable.');
 
         try {
-            $verification = $provider === 'flutterwave'
-                ? $flutterwave->verify($verificationReference)
-                : $pesapal->verify($verificationReference);
+            $verification = match ($provider) {
+                'flutterwave' => $flutterwave->verify($verificationReference),
+                'iotec' => $iotec->statusByExternalId($verificationReference),
+                default => $pesapal->verify($verificationReference),
+            };
         } catch (Throwable $exception) {
             report($exception);
             return redirect()->route('order.track', $order)->with('error', 'Payment verification is temporarily unavailable. Please try again.');
@@ -157,15 +193,22 @@ class PublicOrderPaymentController extends Controller
         $details = $provider === 'flutterwave'
             ? (array) ($verification['data'] ?? [])
             : $verification;
-        $status = strtolower((string) ($provider === 'flutterwave'
-            ? ($details['status'] ?? '')
-            : ($details['payment_status_description'] ?? $details['status'] ?? '')));
-        $verifiedReference = (string) ($provider === 'flutterwave'
-            ? ($details['tx_ref'] ?? '')
-            : ($details['merchant_reference'] ?? ''));
+        $status = strtolower((string) match ($provider) {
+            'flutterwave', 'iotec' => $details['status'] ?? '',
+            default => $details['payment_status_description'] ?? $details['status'] ?? '',
+        });
+        $verifiedReference = (string) match ($provider) {
+            'flutterwave' => $details['tx_ref'] ?? '',
+            'iotec' => $details['externalId'] ?? '',
+            default => $details['merchant_reference'] ?? '',
+        };
         $amount = (float) ($details['amount'] ?? 0);
         $currency = strtoupper((string) ($details['currency'] ?? ''));
-        $paid = in_array($status, ['successful', 'completed', 'approved'], true)
+        if ($provider === 'iotec' && !isset($details['currency'])) {
+            // ioTec's status payload does not echo the currency; the collection was created in ours.
+            $currency = strtoupper((string) config('restaurant.currency'));
+        }
+        $paid = in_array($status, ['successful', 'completed', 'approved', 'success'], true)
             && abs(round($amount, 2) - round((float) $attempt->amount, 2)) < 0.001
             && $currency === strtoupper((string) config('restaurant.currency'))
             && $verifiedReference !== ''
@@ -173,11 +216,13 @@ class PublicOrderPaymentController extends Controller
             && ($provider !== 'flutterwave' || ($verification['status'] ?? null) === 'success');
 
         if (!$paid) {
-            if (in_array($status, ['failed', 'declined', 'cancelled', 'canceled'], true)) {
+            if (in_array($status, ['failed', 'declined', 'cancelled', 'canceled', 'rejected', 'rolledback'], true)) {
                 $attempt->forceFill(['status' => 'failed', 'gateway_response' => $verification])->save();
             }
 
-            return redirect()->route('order.track', $order)->with('error', 'Payment has not been confirmed.');
+            return redirect()->route('order.track', $order)->with('error', $provider === 'iotec' && in_array($status, ['pending', 'senttovendor', 'awaitingapproval'], true)
+                ? 'We have not received your approval yet. Approve the prompt on your phone, then check again.'
+                : 'Payment has not been confirmed.');
         }
 
         DB::transaction(function () use ($record, $attempt, $verification): void {

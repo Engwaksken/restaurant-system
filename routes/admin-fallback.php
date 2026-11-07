@@ -49,13 +49,6 @@ $adminModuleRoutes = [
 
     // Settings
     ['admin.settings.taxes', 'settings/taxes', 'settings.taxes'],
-    ['admin.settings.receipt', 'settings/receipt', 'settings.receipt'],
-    ['admin.settings.invoice', 'settings/invoice', 'settings.invoice'],
-    ['admin.settings.email', 'settings/email', 'settings.email'],
-    ['admin.settings.sms', 'settings/sms', 'settings.sms'],
-    ['admin.settings.ai', 'settings/ai', 'settings.ai'],
-    ['admin.settings.accessibility', 'settings/accessibility', 'settings.accessibility'],
-    ['admin.settings.backups', 'settings/backups', 'settings.backups'],
 ];
 
 Route::middleware(['auth'])

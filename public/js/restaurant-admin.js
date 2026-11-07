@@ -341,25 +341,36 @@ document.addEventListener('DOMContentLoaded', function () {
             chatbotInput.value = '';
 
 
-            setTimeout(function () {
+            const botMessage = document.createElement('div');
+            botMessage.className = 'chat-message bot';
+            botMessage.textContent = '...';
+            chatMessages.appendChild(botMessage);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
 
-                const botMessage =
-                    document.createElement('div');
-
-                botMessage.className =
-                    'chat-message bot';
-
-                botMessage.textContent =
-                    'Your message has been received.';
-
-                chatMessages.appendChild(
-                    botMessage
-                );
-
-                chatMessages.scrollTop =
-                    chatMessages.scrollHeight;
-
-            }, 250);
+            fetch('/admin/chatbot/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({ message: message })
+            })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    let text = data.reply || 'Sorry, something went wrong.';
+                    (data.items || []).forEach(function (item) {
+                        text += '\n- ' + item.name + ' (' + Number(item.price).toFixed(2) + ')';
+                    });
+                    botMessage.textContent = text;
+                    botMessage.style.whiteSpace = 'pre-line';
+                })
+                .catch(function () {
+                    botMessage.textContent = 'The assistant is unavailable right now.';
+                })
+                .finally(function () {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                });
 
         }
     );

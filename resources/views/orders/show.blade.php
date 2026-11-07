@@ -10,7 +10,13 @@
     $statusClasses = ['pending' => 'warning', 'confirmed' => 'primary', 'preparing' => 'info', 'ready' => 'success', 'served' => 'success', 'completed' => 'dark', 'cancelled' => 'secondary'];
     $actionLabels = ['confirmed' => 'Confirm', 'preparing' => 'Start preparing', 'ready' => 'Mark ready', 'completed' => 'Complete'];
 @endphp
-<p><a href="{{ route('admin.orders.index') }}">← All orders</a></p>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <a href="{{ route('admin.orders.index') }}" class="btn btn-sm btn-light"><i class="fas fa-arrow-left me-1"></i>All orders</a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.orders.receipt', $order) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary"><i class="fas fa-receipt me-1"></i>Print receipt</a>
+        <a href="{{ route('admin.orders.invoice', $order) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary"><i class="fas fa-file-invoice me-1"></i>Invoice</a>
+    </div>
+</div>
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="panel p-4 mb-4">

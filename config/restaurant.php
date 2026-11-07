@@ -61,5 +61,12 @@ return [
             'notification_id' => env('PESAPAL_NOTIFICATION_ID'),
             'base_url' => env('PESAPAL_BASE_URL', 'https://cybqa.pesapal.com'),
         ],
+        'iotec' => [
+            'enabled' => (bool) env('IOTEC_ENABLED', false),
+            'client_id' => env('IOTEC_CLIENT_ID'),
+            'client_secret' => env('IOTEC_CLIENT_SECRET'),
+            'wallet_id' => env('IOTEC_WALLET_ID'),
+            'base_url' => env('IOTEC_BASE_URL', 'https://pay.iotec.io'),
+        ],
     ],
 ];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ManualPaymentMethod;
 use App\Models\PaymentGatewaySetting;
 use App\Models\User;
 use App\Services\ActivityLogger;
@@ -56,9 +57,14 @@ class PaymentGatewayController extends Controller
             ['label' => 'Pay on delivery', 'value' => 'Always on', 'icon' => 'fas fa-money-bill-wave', 'tone' => 'neutral', 'hint' => 'Cash at delivery or pickup'],
         ];
 
+        $methods = ManualPaymentMethod::query()->where('restaurant_id', $user->restaurant_id)->orderBy('display_order')->orderBy('name')->get();
+        $pageStats[3] = ['label' => 'Other payment methods', 'value' => number_format($methods->where('is_active', true)->count()), 'icon' => 'fas fa-wallet', 'tone' => 'neutral', 'hint' => 'Plus pay on delivery, always on'];
+
         return view('admin.settings.payment-gateways', [
             'pageStats' => $pageStats,
             'gateways' => $gateways,
+            'methods' => $methods,
+            'methodIcons' => self::METHOD_ICONS,
         ]);
     }
 
@@ -127,6 +133,58 @@ class PaymentGatewayController extends Controller
 
         return redirect()->route('admin.settings.payment-gateways', ['tab' => $gateway])
             ->with('success', $definition['label'] . ' settings saved' . ($enabled ? ' and switched on (' . $data['mode'] . ' mode).' : '. It is switched off.'));
+    }
+
+    public function storeMethod(Request $request, ActivityLogger $logger): RedirectResponse
+    {
+        $user = $this->authorizeGateways($request);
+        $data = $request->validateWithBag('method', $this->methodRules());
+        $data['display_order'] = (int) ($data['display_order'] ?? 0);
+        $method = ManualPaymentMethod::create($data + ['restaurant_id' => $user->restaurant_id, 'is_active' => $request->boolean('is_active', true)]);
+        $logger->log('settings.payment_method.created', $method, ['name' => $method->name]);
+
+        return redirect()->route('admin.settings.payment-gateways', ['tab' => 'other'])->with('success', $method->name . ' added. Customers can now choose it at checkout.');
+    }
+
+    public function updateMethod(Request $request, int $method, ActivityLogger $logger): RedirectResponse
+    {
+        $user = $this->authorizeGateways($request);
+        $record = ManualPaymentMethod::query()->where('restaurant_id', $user->restaurant_id)->findOrFail($method);
+        $data = $request->validateWithBag('method-' . $record->id, $this->methodRules());
+        $data['display_order'] = (int) ($data['display_order'] ?? 0);
+        $record->update($data + ['is_active' => $request->boolean('is_active')]);
+        $logger->log('settings.payment_method.updated', $record, ['name' => $record->name]);
+
+        return redirect()->route('admin.settings.payment-gateways', ['tab' => 'other'])->with('success', $record->name . ' updated.');
+    }
+
+    public function destroyMethod(Request $request, int $method, ActivityLogger $logger): RedirectResponse
+    {
+        $user = $this->authorizeGateways($request);
+        $record = ManualPaymentMethod::query()->where('restaurant_id', $user->restaurant_id)->findOrFail($method);
+        $record->delete();
+        $logger->log('settings.payment_method.deleted', null, ['name' => $record->name]);
+
+        return redirect()->route('admin.settings.payment-gateways', ['tab' => 'other'])->with('success', $record->name . ' removed from checkout.');
+    }
+
+    private const METHOD_ICONS = [
+        'fas fa-mobile-screen-button' => 'Mobile money',
+        'fas fa-building-columns' => 'Bank',
+        'fas fa-money-bill-wave' => 'Cash',
+        'fas fa-credit-card' => 'Card',
+        'fas fa-wallet' => 'Wallet',
+        'fas fa-qrcode' => 'QR code',
+    ];
+
+    private function methodRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:80'],
+            'icon' => ['required', Rule::in(array_keys(self::METHOD_ICONS))],
+            'instructions' => ['required', 'string', 'max:1000'],
+            'display_order' => ['nullable', 'integer', 'min:0', 'max:1000'],
+        ];
     }
 
     private function authorizeGateways(Request $request): User

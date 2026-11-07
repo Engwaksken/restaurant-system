@@ -1,5 +1,12 @@
 @php
     $brand = \App\Support\Brand::for($restaurant);
+    $a11yDefaults = [
+        'font' => (int) ($accessibility['default_text_size'] ?? 0),
+        'toggles' => (object) array_filter([
+            'high-contrast' => filter_var($accessibility['high_contrast'] ?? false, FILTER_VALIDATE_BOOL),
+            'reduce-motion' => filter_var($accessibility['reduce_motion'] ?? false, FILTER_VALIDATE_BOOL),
+        ]),
+    ];
     $currency = $restaurant->currency ?: $brand->currency();
     $categoryCounts = $menuItems->countBy('menu_category_id');
     $showcase = $menuItems->sortByDesc(fn ($item) => !empty($item->image_path))->take(3);
@@ -444,15 +451,25 @@
                                         </span>
                                     </label>
                                     @foreach($paymentGateways as $gateway => $label)
+                                        @php($isMobileMoney = $gateway === 'iotec')
                                         <label class="payment-option d-flex align-items-start gap-2 border rounded p-2 mb-2">
-                                            <input class="form-check-input mt-1" type="radio" name="payment_option" value="{{ $gateway }}" @checked(old('payment_option') === $gateway)>
+                                            <input class="form-check-input mt-1" type="radio" name="payment_option" value="{{ $gateway }}" @checked(old('payment_option') === $gateway) data-needs-email="{{ $isMobileMoney ? '0' : '1' }}">
                                             <span>
-                                                <span class="d-block fw-semibold small"><i class="fas {{ $gateway === 'flutterwave' ? 'fa-credit-card' : 'fa-globe' }} me-1 text-primary"></i>Pay online with {{ $label }}</span>
-                                                <span class="d-block text-muted" style="font-size:.75rem">You'll continue to the secure payment page after placing the order.</span>
+                                                <span class="d-block fw-semibold small"><i class="fas {{ $isMobileMoney ? 'fa-mobile-screen-button' : ($gateway === 'flutterwave' ? 'fa-credit-card' : 'fa-globe') }} me-1 text-primary"></i>{{ $isMobileMoney ? 'Mobile money (MTN / Airtel)' : 'Pay online with ' . $label }}</span>
+                                                <span class="d-block text-muted" style="font-size:.75rem">{{ $isMobileMoney ? "We'll send a payment prompt to your phone number after you place the order." : "You'll continue to the secure payment page after placing the order." }}</span>
                                             </span>
                                         </label>
                                     @endforeach
-                                    <div class="form-text" id="onlinePaymentEmailHint" hidden>A valid email is required for online payment.</div>
+                                    @foreach($manualMethods as $method)
+                                        <label class="payment-option d-flex align-items-start gap-2 border rounded p-2 mb-2">
+                                            <input class="form-check-input mt-1" type="radio" name="payment_option" value="{{ $method->optionKey() }}" @checked(old('payment_option') === $method->optionKey()) data-needs-email="0">
+                                            <span>
+                                                <span class="d-block fw-semibold small"><i class="{{ $method->icon }} me-1 text-primary"></i>{{ $method->name }}</span>
+                                                <span class="d-block text-muted" style="font-size:.75rem">Payment instructions are shown after you place the order.</span>
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                    <div class="form-text" id="onlinePaymentEmailHint" hidden>A valid email is required for card payment.</div>
                                 </fieldset>
                             </div>
                             <div class="col-12">
@@ -492,6 +509,7 @@
 </div>
 
 
+@if(filter_var($accessibility['show_on_website'] ?? true, FILTER_VALIDATE_BOOL))
 <div class="floating-accessibility dropup">
     <button
         type="button"
@@ -520,12 +538,13 @@
         <li><button type="button" class="dropdown-item text-danger" data-a11y-reset><i class="fas fa-rotate-left"></i>Reset</button></li>
     </ul>
 </div>
+@endif
 
 <div class="chat-widget" id="chatWidget">
     <section class="chat-panel card shadow-lg border-0" id="chatPanel" aria-labelledby="chatPanelLabel" hidden>
         <header class="card-header bg-primary text-white d-flex align-items-center justify-content-between py-2 border-0">
             <div>
-                <div class="fw-semibold" id="chatPanelLabel">{{ $brand->name() }} Assistant</div>
+                <div class="fw-semibold" id="chatPanelLabel">{{ filter_var($aiSettings['enabled'] ?? false, FILTER_VALIDATE_BOOL) && trim((string) ($aiSettings['assistant_name'] ?? '')) !== '' ? $aiSettings['assistant_name'] : $brand->name() . ' Assistant' }}</div>
                 <small class="opacity-75">Ask about the menu, prices or orders</small>
             </div>
             <button type="button" class="btn btn-sm text-white" id="chatClose" aria-label="Close chat">
@@ -533,7 +552,7 @@
             </button>
         </header>
         <div class="chat-messages" id="chatMessages" aria-live="polite">
-            <div class="chat-bubble bot">Hello. Ask me about the menu, prices, orders or reservations.</div>
+            <div class="chat-bubble bot">{{ trim((string) ($aiSettings['greeting'] ?? '')) ?: 'Hello! Ask me about our menu, prices, opening hours or how to order.' }}</div>
         </div>
         <form id="chatForm" class="card-footer bg-white p-2 d-flex gap-2 border-top">
             <input id="chatInput" class="form-control form-control-sm" maxlength="1000" placeholder="Type your message" aria-label="Message" required>
@@ -591,7 +610,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updatePaymentRequirement() {
-        const onlineSelected = paymentRadios.some(radio => radio.checked && radio.value !== 'cash_on_delivery');
+        const onlineSelected = paymentRadios.some(radio => radio.checked && radio.dataset.needsEmail === '1');
         customerEmail.required = onlineSelected;
         onlinePaymentEmailHint.hidden = !onlineSelected;
     }
@@ -816,9 +835,13 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', function () {
 
     const root = document.documentElement;
-    const prefs = JSON.parse(localStorage.getItem('a11y') || '{}');
+    // Restaurant defaults apply until a visitor sets their own preferences.
+    const a11yDefaults = @json($a11yDefaults);
+    let stored = null;
+    try { stored = JSON.parse(localStorage.getItem('a11y') || 'null'); } catch (e) { stored = null; }
+    const prefs = stored || a11yDefaults;
     let fontScale = prefs.font || 0;
-    const toggles = prefs.toggles || {};
+    const toggles = Object.assign({}, prefs.toggles || {});
     const main = document.getElementById('siteMain');
 
     function applyA11y() {

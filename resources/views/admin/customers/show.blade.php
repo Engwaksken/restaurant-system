@@ -81,7 +81,7 @@
                 <h2 class="h5">Feedback</h2>
                 <ul class="list-unstyled mb-0">
                 @forelse($feedback as $entry)
-                    <li class="mb-2"><strong aria-label="{{ $entry->rating }} out of 5">{{ str_repeat('★', $entry->rating) }}{{ str_repeat('☆', 5 - $entry->rating) }}</strong>
+                    <li class="mb-2"><strong aria-label="{{ $entry->rating }} out of 5">@for($star = 1; $star <= 5; $star++)<i class="{{ $star <= $entry->rating ? 'fas' : 'far' }} fa-star"></i>@endfor</strong>
                         <small class="text-muted">{{ $entry->order?->order_number }} · {{ $entry->created_at->format('Y-m-d') }}</small>
                         @if($entry->comment)<span class="d-block">{{ $entry->comment }}</span>@endif</li>
                 @empty

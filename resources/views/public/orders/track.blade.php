@@ -40,7 +40,7 @@
                     @for($score = 5; $score >= 1; $score--)
                         <div class="form-check form-check-inline">
                             <input class="form-check-input" type="radio" name="rating" id="rating{{ $score }}" value="{{ $score }}" required @checked((int) old('rating') === $score)>
-                            <label class="form-check-label" for="rating{{ $score }}">{{ $score }} ★</label>
+                            <label class="form-check-label" for="rating{{ $score }}">{{ $score }} <i class="fas fa-star"></i></label>
                         </div>
                     @endfor
                 </fieldset>

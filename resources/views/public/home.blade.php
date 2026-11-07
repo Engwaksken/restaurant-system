@@ -10,6 +10,10 @@
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
         rel="stylesheet"
     >
+    <link
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        rel="stylesheet"
+    >
 
     <style>
         body {
@@ -58,6 +62,22 @@
         .floating-accessibility {
             bottom: 84px;
         }
+
+        .a11y-high-contrast {
+            filter: contrast(1.6);
+        }
+
+        .a11y-grayscale {
+            filter: grayscale(1);
+        }
+
+        .a11y-reduce-motion *,
+        .a11y-reduce-motion *::before,
+        .a11y-reduce-motion *::after {
+            transition: none !important;
+            animation: none !important;
+            scroll-behavior: auto !important;
+        }
     </style>
 </head>
 
@@ -69,15 +89,6 @@
         <a class="navbar-brand fw-bold" href="{{ route('home') }}">
             {{ config('app.name', 'Restaurant') }}
         </a>
-
-        <div class="ms-auto">
-            <a
-                href="{{ route('login') }}"
-                class="btn btn-outline-dark"
-            >
-                Staff Login
-            </a>
-        </div>
 
     </div>
 </nav>
@@ -296,17 +307,62 @@
     type="button"
     class="btn btn-dark floating-accessibility"
     title="Accessibility"
+    aria-label="Accessibility"
+    data-bs-toggle="modal"
+    data-bs-target="#accessibilityModal"
 >
-    ♿
+    <i class="fas fa-universal-access"></i>
 </button>
 
 <button
     type="button"
     class="btn btn-primary floating-chat"
     title="Chat with us"
+    aria-label="Chat with us"
+    data-bs-toggle="modal"
+    data-bs-target="#chatModal"
 >
-    💬
+    <i class="fas fa-comments"></i>
 </button>
+
+<div class="modal fade" id="accessibilityModal" tabindex="-1" aria-labelledby="accessibilityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="accessibilityModalLabel">Accessibility</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-grid gap-2">
+                <button type="button" class="btn btn-outline-secondary" data-a11y-font="1">Increase text</button>
+                <button type="button" class="btn btn-outline-secondary" data-a11y-font="-1">Decrease text</button>
+                <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="high-contrast">High contrast</button>
+                <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="grayscale">Grayscale</button>
+                <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="reduce-motion">Reduce motion</button>
+                <button type="button" class="btn btn-outline-danger" data-a11y-reset>Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="chatModal" tabindex="-1" aria-labelledby="chatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chatModalLabel">Restaurant Assistant</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="chatMessages" class="d-flex flex-column gap-2 mb-3">
+                    <div class="alert alert-light border mb-0">Hello. Ask me about the menu, prices, orders or reservations.</div>
+                </div>
+                <form id="chatForm" class="d-flex gap-2">
+                    <input id="chatInput" class="form-control" maxlength="1000" placeholder="Type your message" required>
+                    <button class="btn btn-primary" type="submit">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 
 <script>
@@ -426,6 +482,97 @@ document.addEventListener('DOMContentLoaded', function () {
             renderCart();
             document.getElementById('checkout').scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    });
+
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const root = document.documentElement;
+    const prefs = JSON.parse(localStorage.getItem('a11y') || '{}');
+    let fontScale = prefs.font || 0;
+    const toggles = prefs.toggles || {};
+
+    function applyA11y() {
+        root.style.fontSize = fontScale ? `${100 + fontScale * 10}%` : '';
+        ['high-contrast', 'grayscale', 'reduce-motion'].forEach(name => {
+            document.body.classList.toggle(`a11y-${name}`, !!toggles[name]);
+        });
+        localStorage.setItem('a11y', JSON.stringify({ font: fontScale, toggles }));
+    }
+
+    document.querySelectorAll('[data-a11y-font]').forEach(button => {
+        button.addEventListener('click', () => {
+            fontScale = Math.max(-2, Math.min(4, fontScale + Number(button.dataset.a11yFont)));
+            applyA11y();
+        });
+    });
+
+    document.querySelectorAll('[data-a11y-toggle]').forEach(button => {
+        button.addEventListener('click', () => {
+            const name = button.dataset.a11yToggle;
+            toggles[name] = !toggles[name];
+            applyA11y();
+        });
+    });
+
+    document.querySelector('[data-a11y-reset]')?.addEventListener('click', () => {
+        fontScale = 0;
+        Object.keys(toggles).forEach(name => delete toggles[name]);
+        applyA11y();
+    });
+
+    applyA11y();
+
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
+    const chatMessages = document.getElementById('chatMessages');
+
+    function addBubble(text, items = []) {
+        const bubble = document.createElement('div');
+        bubble.className = 'alert alert-light border mb-0';
+        bubble.textContent = text;
+
+        if (items.length) {
+            const list = document.createElement('ul');
+            list.className = 'mb-0 mt-2';
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.name} — ${Number(item.price).toFixed(2)}`;
+                list.append(li);
+            });
+            bubble.append(list);
+        }
+
+        chatMessages.append(bubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    chatForm?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        const user = document.createElement('div');
+        user.className = 'alert alert-primary mb-0 ms-auto';
+        user.textContent = message;
+        chatMessages.append(user);
+        chatInput.value = '';
+
+        try {
+            const response = await fetch('/api/v1/chat/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ message }),
+            });
+            const data = await response.json();
+            addBubble(data.reply || 'Sorry, something went wrong. Please try again.', data.items || []);
+        } catch (error) {
+            addBubble('Sorry, the assistant is unavailable right now. Please try again later.');
+        }
     });
 
 });

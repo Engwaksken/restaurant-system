@@ -222,29 +222,11 @@
                                 @endif
                             </div>
 
-                            <div class="item-options mb-3" data-item="{{ $item->id }}">
-                                @if($item->variants->isNotEmpty())
-                                    <label class="form-label small mb-1" for="variant-{{ $item->id }}">Choose</label>
-                                    <select class="form-select form-select-sm mb-2 item-variant" id="variant-{{ $item->id }}">
-                                        @foreach($item->variants as $variant)
-                                            <option value="{{ $variant->id }}" data-name="{{ $variant->name }}" data-price="{{ $variant->price }}">{{ $variant->name }} — {{ number_format((float) $variant->price, 2) }}</option>
-                                        @endforeach
-                                    </select>
-                                @endif
-                                @foreach($item->addons as $addon)
-                                    <div class="form-check small">
-                                        <input class="form-check-input item-addon" type="checkbox" id="addon-{{ $addon->id }}" value="{{ $addon->id }}" data-name="{{ $addon->name }}" data-price="{{ $addon->price }}">
-                                        <label class="form-check-label" for="addon-{{ $addon->id }}">{{ $addon->name }} (+{{ number_format((float) $addon->price, 2) }})</label>
-                                    </div>
-                                @endforeach
-                            </div>
-
                             <button
                                 type="button"
-                                class="btn btn-primary w-100 add-to-cart mt-auto"
-                                data-id="{{ $item->id }}"
-                                data-name="{{ $item->name }}"
-                                data-price="{{ $item->price }}"
+                                class="btn btn-primary w-100 mt-auto"
+                                data-bs-toggle="modal"
+                                data-bs-target="#itemModal-{{ $item->id }}"
                             >
                                 Add to Order
                             </button>
@@ -266,6 +248,49 @@
             @endforelse
 
         </div>
+
+        @foreach($menuItems as $item)
+            <div class="modal fade" id="itemModal-{{ $item->id }}" tabindex="-1" aria-labelledby="itemModalLabel-{{ $item->id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="itemModalLabel-{{ $item->id }}">{{ $item->name }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="item-options" data-item="{{ $item->id }}">
+                                @if($item->variants->isNotEmpty())
+                                    <label class="form-label small mb-1" for="variant-{{ $item->id }}">Choose</label>
+                                    <select class="form-select mb-3 item-variant" id="variant-{{ $item->id }}">
+                                        @foreach($item->variants as $variant)
+                                            <option value="{{ $variant->id }}" data-name="{{ $variant->name }}" data-price="{{ $variant->price }}">{{ $variant->name }} — {{ number_format((float) $variant->price, 2) }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                                @foreach($item->addons as $addon)
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input item-addon" type="checkbox" id="addon-{{ $addon->id }}" value="{{ $addon->id }}" data-name="{{ $addon->name }}" data-price="{{ $addon->price }}">
+                                        <label class="form-check-label" for="addon-{{ $addon->id }}">{{ $addon->name }} (+{{ number_format((float) $addon->price, 2) }})</label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                            <button
+                                type="button"
+                                class="btn btn-primary add-to-cart"
+                                data-id="{{ $item->id }}"
+                                data-name="{{ $item->name }}"
+                                data-price="{{ $item->price }}"
+                            >
+                                Add to Order
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endforeach
 
         <div class="card border-0 shadow-sm mt-5" id="checkout">
             <div class="card-body p-4">
@@ -308,8 +333,8 @@
     class="btn btn-dark floating-accessibility"
     title="Accessibility"
     aria-label="Accessibility"
-    data-bs-toggle="modal"
-    data-bs-target="#accessibilityModal"
+    data-bs-toggle="offcanvas"
+    data-bs-target="#accessibilityPanel"
 >
     <i class="fas fa-universal-access"></i>
 </button>
@@ -319,48 +344,40 @@
     class="btn btn-primary floating-chat"
     title="Chat with us"
     aria-label="Chat with us"
-    data-bs-toggle="modal"
-    data-bs-target="#chatModal"
+    data-bs-toggle="offcanvas"
+    data-bs-target="#chatPanel"
 >
     <i class="fas fa-comments"></i>
 </button>
 
-<div class="modal fade" id="accessibilityModal" tabindex="-1" aria-labelledby="accessibilityModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="accessibilityModalLabel">Accessibility</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body d-grid gap-2">
+<div class="offcanvas offcanvas-end" id="accessibilityPanel" tabindex="-1" aria-labelledby="accessibilityPanelLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="accessibilityPanelLabel">Accessibility</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body d-grid gap-2">
                 <button type="button" class="btn btn-outline-secondary" data-a11y-font="1">Increase text</button>
                 <button type="button" class="btn btn-outline-secondary" data-a11y-font="-1">Decrease text</button>
                 <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="high-contrast">High contrast</button>
                 <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="grayscale">Grayscale</button>
                 <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="reduce-motion">Reduce motion</button>
                 <button type="button" class="btn btn-outline-danger" data-a11y-reset>Reset</button>
-            </div>
-        </div>
     </div>
 </div>
 
-<div class="modal fade" id="chatModal" tabindex="-1" aria-labelledby="chatModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="chatModalLabel">Restaurant Assistant</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="chatMessages" class="d-flex flex-column gap-2 mb-3">
-                    <div class="alert alert-light border mb-0">Hello. Ask me about the menu, prices, orders or reservations.</div>
-                </div>
-                <form id="chatForm" class="d-flex gap-2">
-                    <input id="chatInput" class="form-control" maxlength="1000" placeholder="Type your message" required>
-                    <button class="btn btn-primary" type="submit">Send</button>
-                </form>
-            </div>
+<div class="offcanvas offcanvas-end" id="chatPanel" tabindex="-1" aria-labelledby="chatPanelLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="chatPanelLabel">Restaurant Assistant</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+        <div id="chatMessages" class="d-flex flex-column gap-2 flex-grow-1">
+            <div class="alert alert-light border mb-0">Hello. Ask me about the menu, prices, orders or reservations.</div>
         </div>
+        <form id="chatForm" class="d-flex gap-2 mt-3">
+            <input id="chatInput" class="form-control" maxlength="1000" placeholder="Type your message" required>
+            <button class="btn btn-primary" type="submit">Send</button>
+        </form>
     </div>
 </div>
 
@@ -480,6 +497,8 @@ document.addEventListener('DOMContentLoaded', function () {
             line.quantity++;
             cartItems.set(key, line);
             renderCart();
+            const modal = button.closest('.modal');
+            if (modal) { bootstrap.Modal.getInstance(modal)?.hide(); }
             document.getElementById('checkout').scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });

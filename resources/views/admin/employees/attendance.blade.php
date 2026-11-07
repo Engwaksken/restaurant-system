@@ -4,6 +4,18 @@
 @section('page-title', 'Attendance')
 
 @section('content')
+@php
+    $correctRows = $manages ? collect($records->items()) : collect();
+    $activeCorrectId = session()->hasOldInput('clock_in_at') && ! session()->hasOldInput('user_id') && $errors->hasAny(['clock_in_at', 'clock_out_at', 'note']) && $correctRows->count() === 1 ? $correctRows->first()->id : null;
+    $autoOpen = null;
+    if ($errors->any()) {
+        if (session()->hasOldInput('user_id')) {
+            $autoOpen = 'add-attendance';
+        } elseif ($activeCorrectId) {
+            $autoOpen = 'edit-attendance-' . $activeCorrectId;
+        }
+    }
+@endphp
 <div class="row g-4 mb-4">
     <div class="col-lg-4"><div class="panel p-4 h-100">
         <h2 class="h5">Time clock</h2>
@@ -23,18 +35,10 @@
             @endif
         </form>
         @if($manages)
-            <details class="mt-4">
-                <summary>Record missed attendance</summary>
-                <form method="POST" action="{{ route('admin.attendance.store') }}" class="mt-2">
-                    @csrf
-                    <select class="form-select form-select-sm mb-1" name="user_id" required aria-label="Staff member">@foreach($staff as $member)<option value="{{ $member->id }}">{{ $member->name }}</option>@endforeach</select>
-                    <select class="form-select form-select-sm mb-1" name="branch_id" required aria-label="Branch">@foreach($branches as $branch)<option value="{{ $branch->id }}">{{ $branch->name }}</option>@endforeach</select>
-                    <label class="form-label small mb-0" for="manualIn">In</label><input class="form-control form-control-sm mb-1" id="manualIn" type="datetime-local" name="clock_in_at" required>
-                    <label class="form-label small mb-0" for="manualOut">Out</label><input class="form-control form-control-sm mb-1" id="manualOut" type="datetime-local" name="clock_out_at" required>
-                    <input class="form-control form-control-sm mb-1" name="note" minlength="5" maxlength="1000" required placeholder="Why is this being recorded manually?" aria-label="Note">
-                    <button class="btn btn-sm btn-outline-primary" type="submit">Record</button>
-                </form>
-            </details>
+            <button type="button" class="btn btn-outline-primary btn-sm mt-4" data-bs-toggle="modal" data-bs-target="#add-attendance">
+                <i class="fas fa-plus me-1"></i>
+                Record missed attendance
+            </button>
         @endif
     </div></div>
     <div class="col-lg-8"><div class="panel p-4 h-100">
@@ -59,16 +63,9 @@
                     <td class="text-end">{{ $record->clock_out_at ? number_format($record->hours(), 2) : '—' }}</td>
                     <td class="small">{{ $record->note }}@if($record->editor)<span class="d-block text-muted">Edited by {{ $record->editor->name }}</span>@endif
                         @if($manages)
-                            <details>
-                                <summary>Correct</summary>
-                                <form method="POST" action="{{ route('admin.attendance.update', $record->id) }}" class="mt-1">
-                                    @csrf @method('PUT')
-                                    <input class="form-control form-control-sm mb-1" type="datetime-local" name="clock_in_at" value="{{ $record->clock_in_at->format('Y-m-d\TH:i') }}" required aria-label="Clock in">
-                                    <input class="form-control form-control-sm mb-1" type="datetime-local" name="clock_out_at" value="{{ $record->clock_out_at?->format('Y-m-d\TH:i') }}" aria-label="Clock out">
-                                    <input class="form-control form-control-sm mb-1" name="note" minlength="5" maxlength="1000" required placeholder="Reason for correction" aria-label="Reason">
-                                    <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
-                                </form>
-                            </details>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-1" data-bs-toggle="modal" data-bs-target="#edit-attendance-{{ $record->id }}">
+                                <i class="fas fa-pen-to-square me-1"></i>Correct
+                            </button>
                         @endif
                     </td>
                 </tr>
@@ -80,4 +77,150 @@
         {{ $records->links() }}
     </div></div>
 </div>
+
+{{-- Modals are outside the table. --}}
+@if($manages)
+    <div class="modal fade" id="add-attendance" tabindex="-1" aria-labelledby="add-attendance-label" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <form class="modal-content" method="POST" action="{{ route('admin.attendance.store') }}">
+                @csrf
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="add-attendance-label"><i class="fas fa-user-clock me-2 text-primary"></i>Record missed attendance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="manualUser">Staff member <span class="text-danger" aria-hidden="true">*</span></label>
+                            <select class="form-select @error('user_id') is-invalid @enderror" id="manualUser" name="user_id" required>
+                                @foreach($staff as $member)
+                                    <option value="{{ $member->id }}" @selected((string) old('user_id') === (string) $member->id)>{{ $member->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('user_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="manualBranch">Branch <span class="text-danger" aria-hidden="true">*</span></label>
+                            <select class="form-select @error('branch_id') is-invalid @enderror" id="manualBranch" name="branch_id" required>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}" @selected((string) old('branch_id') === (string) $branch->id)>{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="manualIn">Clock in <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control @error('clock_in_at') is-invalid @enderror" id="manualIn" type="datetime-local" name="clock_in_at" value="{{ old('clock_in_at') }}" required>
+                            @error('clock_in_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="manualOut">Clock out <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control @error('clock_out_at') is-invalid @enderror" id="manualOut" type="datetime-local" name="clock_out_at" value="{{ old('clock_out_at') }}" required>
+                            @error('clock_out_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label" for="manualNote">Reason <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control @error('note') is-invalid @enderror" id="manualNote" name="note" minlength="5" maxlength="1000" value="{{ old('note') }}" required placeholder="Why is this being recorded manually?">
+                            @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                        <i class="fas fa-xmark me-1"></i>
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-floppy-disk me-1"></i>
+                        Record
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+@endif
+
+@foreach($correctRows as $record)
+    @php
+        $isActiveCorrect = $activeCorrectId === $record->id;
+        $inValue = $record->clock_in_at->format('Y-m-d\TH:i');
+        $outValue = $record->clock_out_at?->format('Y-m-d\TH:i');
+    @endphp
+    <div class="modal fade" id="edit-attendance-{{ $record->id }}" tabindex="-1" aria-labelledby="edit-attendance-label-{{ $record->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" method="POST" action="{{ route('admin.attendance.update', $record->id) }}">
+                @csrf
+                @method('PUT')
+
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="edit-attendance-label-{{ $record->id }}"><i class="fas fa-pen-to-square me-2 text-primary"></i>Correct attendance</h5>
+                        <small class="text-muted">{{ $record->user?->name }} · {{ $record->clock_in_at->format('D j M H:i') }}</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="correctIn{{ $record->id }}">Clock in <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input class="form-control{{ $isActiveCorrect && $errors->has('clock_in_at') ? ' is-invalid' : '' }}" id="correctIn{{ $record->id }}" type="datetime-local" name="clock_in_at" value="{{ $isActiveCorrect ? old('clock_in_at', $inValue) : $inValue }}" required>
+                        @if($isActiveCorrect)
+                            @error('clock_in_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @endif
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="correctOut{{ $record->id }}">Clock out</label>
+                        <input class="form-control{{ $isActiveCorrect && $errors->has('clock_out_at') ? ' is-invalid' : '' }}" id="correctOut{{ $record->id }}" type="datetime-local" name="clock_out_at" value="{{ $isActiveCorrect ? old('clock_out_at', $outValue) : $outValue }}">
+                        @if($isActiveCorrect)
+                            @error('clock_out_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @endif
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="correctNote{{ $record->id }}">Reason for correction <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input class="form-control{{ $isActiveCorrect && $errors->has('note') ? ' is-invalid' : '' }}" id="correctNote{{ $record->id }}" name="note" minlength="5" maxlength="1000" required placeholder="e.g. Forgot to clock out at end of shift" value="{{ $isActiveCorrect ? old('note') : '' }}">
+                        @if($isActiveCorrect)
+                            @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @endif
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                        <i class="fas fa-xmark me-1"></i>
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-floppy-disk me-1"></i>
+                        Save
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+@endforeach
+
+@if($autoOpen)
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById(@json($autoOpen));
+
+        if (modal && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        }
+    });
+    </script>
+    @endpush
+@endif
 @endsection

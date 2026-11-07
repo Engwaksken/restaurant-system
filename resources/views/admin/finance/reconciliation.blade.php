@@ -4,7 +4,11 @@
 @section('page-title', 'Payment Reconciliation')
 
 @section('content')
-@php $money = fn ($v) => number_format((float) $v, 2); @endphp
+@php
+    $money = fn ($v) => number_format((float) $v, 2);
+    $disputeRows = $canManage ? collect($payments->items()) : collect();
+    $activeDisputeId = session()->hasOldInput('status') && $errors->any() && $disputeRows->count() === 1 ? $disputeRows->first()->id : null;
+@endphp
 <div class="panel p-4 mb-4">
     <form method="GET" class="row g-2 align-items-end">
         <div class="col-6 col-md-2"><label class="form-label" for="recFrom">From</label><input class="form-control" type="date" id="recFrom" name="date_from" value="{{ $from->toDateString() }}"></div>
@@ -54,18 +58,13 @@
                     @if($payment->reconciliation_note)<span class="d-block">{{ $payment->reconciliation_note }}</span>@endif
                     @if($payment->reconciler)<span class="d-block text-muted">{{ $payment->reconciler->name }}, {{ $payment->reconciled_at?->format('Y-m-d') }}</span>@endif
                     @if($canManage)
-                        <details>
-                            <summary>{{ $payment->reconciliation_status === 'unreconciled' ? 'Dispute' : 'Reopen / dispute' }}</summary>
-                            <form method="POST" action="{{ route('admin.reconciliation.dispute', $payment->id) }}" class="mt-1">
-                                @csrf @method('PATCH')
-                                <select class="form-select form-select-sm mb-1" name="status" aria-label="New status">
-                                    <option value="disputed">Flag as disputed</option>
-                                    @if($payment->reconciliation_status !== 'unreconciled')<option value="unreconciled">Reopen (unreconciled)</option>@endif
-                                </select>
-                                <input class="form-control form-control-sm mb-1" name="note" minlength="5" maxlength="1000" required placeholder="What is wrong?" aria-label="Note">
-                                <button class="btn btn-sm btn-outline-danger" type="submit">Save</button>
-                            </form>
-                        </details>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger mt-1"
+                                data-bs-toggle="modal"
+                                data-bs-target="#dispute-payment-{{ $payment->id }}">
+                            <i class="fas fa-flag me-1"></i>
+                            {{ $payment->reconciliation_status === 'unreconciled' ? 'Dispute' : 'Reopen / dispute' }}
+                        </button>
                     @endif
                 </td>
             </tr>
@@ -83,4 +82,77 @@
         </div>
     @endif
 </div>
+
+{{-- Dispute modals are outside the table. --}}
+@foreach($payments as $payment)
+    @if($canManage)
+        @php
+            $isActiveDispute = $activeDisputeId === $payment->id;
+            $newStatus = $isActiveDispute ? old('status', 'disputed') : 'disputed';
+        @endphp
+        <div class="modal fade" id="dispute-payment-{{ $payment->id }}" tabindex="-1" aria-labelledby="dispute-payment-label-{{ $payment->id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form class="modal-content" method="POST" action="{{ route('admin.reconciliation.dispute', $payment->id) }}">
+                    @csrf
+                    @method('PATCH')
+
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="dispute-payment-label-{{ $payment->id }}"><i class="fas fa-flag me-2 text-danger"></i>Dispute payment</h5>
+                            <small class="text-muted">{{ $payment->receipt_number }}</small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="disputeStatus{{ $payment->id }}">New status <span class="text-danger" aria-hidden="true">*</span></label>
+                            <select class="form-select{{ $isActiveDispute && $errors->has('status') ? ' is-invalid' : '' }}" id="disputeStatus{{ $payment->id }}" name="status" required>
+                                <option value="disputed" @selected($newStatus === 'disputed')>Flag as disputed</option>
+                                @if($payment->reconciliation_status !== 'unreconciled')<option value="unreconciled" @selected($newStatus === 'unreconciled')>Reopen (unreconciled)</option>@endif
+                            </select>
+                            @if($isActiveDispute)
+                                @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            @endif
+                        </div>
+
+                        <div>
+                            <label class="form-label" for="disputeNote{{ $payment->id }}">Note <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control{{ $isActiveDispute && $errors->has('note') ? ' is-invalid' : '' }}" id="disputeNote{{ $payment->id }}" name="note" minlength="5" maxlength="1000" required placeholder="e.g. Amount on the statement does not match the receipt" value="{{ $isActiveDispute ? old('note') : '' }}">
+                            @if($isActiveDispute)
+                                @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                            <i class="fas fa-xmark me-1"></i>
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-floppy-disk me-1"></i>
+                            Save
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    @endif
+@endforeach
+
+@if($activeDisputeId)
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('dispute-payment-{{ $activeDisputeId }}');
+
+        if (modal && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        }
+    });
+    </script>
+    @endpush
+@endif
 @endsection

@@ -2,6 +2,7 @@
 
 @section('title', $customer->name)
 @section('page-title', 'Customer · ' . $customer->name)
+@section('own-validation-errors', '1')
 
 @section('content')
 @php $currency = config('restaurant.currency'); @endphp
@@ -14,33 +15,27 @@
 </div>
 <div class="row g-4">
     <div class="col-lg-4"><div class="panel p-4">
-        <h2 class="h5">Details</h2>
-        @if($canManage)
-            <form method="POST" action="{{ route('admin.customers.update', $customer->id) }}">
-                @csrf @method('PUT')
-                @include('admin.customers._fields', ['customer' => $customer])
-                <button class="btn btn-primary" type="submit">Save changes</button>
-            </form>
-        @else
-            <dl class="mb-0">
-                <dt>Phone</dt><dd>{{ $customer->phone ?? '—' }}</dd>
-                <dt>Email</dt><dd>{{ $customer->email ?? '—' }}</dd>
-                <dt>Address</dt><dd>{{ $customer->address ?? '—' }}</dd>
-                <dt>Notes</dt><dd>{{ $customer->notes ?? '—' }}</dd>
-            </dl>
-        @endif
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h5 mb-0">Details</h2>
+            @if($canManage)
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit-customer-{{ $customer->id }}" title="Edit">
+                    <i class="fas fa-pen-to-square me-1"></i> Edit
+                </button>
+            @endif
+        </div>
+        <dl class="mb-0">
+            <dt>Phone</dt><dd>{{ $customer->phone ?? '—' }}</dd>
+            <dt>Email</dt><dd>{{ $customer->email ?? '—' }}</dd>
+            <dt>Address</dt><dd>{{ $customer->address ?? '—' }}</dd>
+            <dt>Notes</dt><dd>{{ $customer->notes ?? '—' }}</dd>
+        </dl>
         <p class="small text-muted mt-3 mb-0">Customer since {{ $customer->created_at?->format('j M Y') }}</p>
         @if($canErase)
-            <details class="mt-3 border-top pt-3">
-                <summary class="text-danger small">Erase personal data</summary>
-                <p class="small text-muted mt-2">Removes name, contact details, notes, loyalty points, reservation guest details and feedback comments. Orders and payments are kept for accounting but no longer identify this person. This cannot be undone.</p>
-                <form method="POST" action="{{ route('admin.customers.erase', $customer->id) }}">
-                    @csrf @method('DELETE')
-                    <label class="form-label small" for="eraseConfirm">Type ERASE to confirm</label>
-                    <input class="form-control form-control-sm mb-2" id="eraseConfirm" name="confirm" required autocomplete="off">
-                    <button class="btn btn-sm btn-danger" type="submit">Erase customer</button>
-                </form>
-            </details>
+            <div class="mt-3 border-top pt-3">
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete-customer-{{ $customer->id }}" title="Erase personal data">
+                    <i class="fas fa-trash me-1"></i> Erase personal data
+                </button>
+            </div>
         @endif
     </div></div>
     <div class="col-lg-8">
@@ -92,4 +87,158 @@
         </div>
     </div>
 </div>
+
+@if($canManage)
+    {{-- =========================================================
+         EDIT CUSTOMER MODAL
+         OUTSIDE THE TABLE
+    ========================================================= --}}
+    <div class="modal fade"
+         id="edit-customer-{{ $customer->id }}"
+         tabindex="-1"
+         aria-labelledby="edit-customer-{{ $customer->id }}Label"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+
+            <form class="modal-content"
+                  method="POST"
+                  action="{{ route('admin.customers.update', $customer->id) }}">
+
+                @csrf
+                @method('PUT')
+
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title"
+                            id="edit-customer-{{ $customer->id }}Label">
+                            <i class="fas fa-pen-to-square me-2 text-primary"></i>
+                            Edit customer
+                        </h5>
+                        <small class="text-muted">
+                            {{ $customer->name }}
+                        </small>
+                    </div>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    @include('admin.customers._fields', ['customer' => $customer])
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-light"
+                            data-bs-dismiss="modal">
+                        <i class="fas fa-xmark me-1"></i>
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        <i class="fas fa-floppy-disk me-1"></i>
+                        Save changes
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+@endif
+
+@if($canErase)
+    {{-- =========================================================
+         ERASE CONFIRMATION
+    ========================================================= --}}
+    <div class="modal fade"
+         id="delete-customer-{{ $customer->id }}"
+         tabindex="-1"
+         aria-labelledby="delete-customer-{{ $customer->id }}Label"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered">
+
+            <form class="modal-content"
+                  method="POST"
+                  action="{{ route('admin.customers.erase', $customer->id) }}">
+
+                @csrf
+                @method('DELETE')
+
+                <div class="modal-header">
+                    <h5 class="modal-title"
+                        id="delete-customer-{{ $customer->id }}Label">
+                        <i class="fas fa-trash me-2 text-danger"></i>
+                        Erase personal data
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p class="small text-muted">
+                        Removes name, contact details, notes, loyalty points, reservation guest details and feedback comments. Orders and payments are kept for accounting but no longer identify this person. This cannot be undone.
+                    </p>
+
+                    <label class="form-label"
+                           for="eraseConfirm{{ $customer->id }}">
+                        Type ERASE to confirm <span class="text-danger" aria-hidden="true">*</span>
+                    </label>
+
+                    <input class="form-control @error('confirm') is-invalid @enderror"
+                           id="eraseConfirm{{ $customer->id }}"
+                           name="confirm"
+                           placeholder="ERASE"
+                           required
+                           autocomplete="off">
+
+                    @error('confirm')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-light"
+                            data-bs-dismiss="modal">
+                        <i class="fas fa-xmark me-1"></i>
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>
+                        Erase customer
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+@endif
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.bootstrap) {
+        return;
+    }
+    @if($canManage && $errors->hasAny(['name', 'phone', 'email', 'date_of_birth', 'address', 'notes']))
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('edit-customer-{{ $customer->id }}')).show();
+    @endif
+    @if($canErase && $errors->has('confirm'))
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('delete-customer-{{ $customer->id }}')).show();
+    @endif
+});
+</script>
+@endpush
 @endsection

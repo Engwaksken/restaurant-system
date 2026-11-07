@@ -2,6 +2,7 @@
 
 @section('title', 'Loyalty')
 @section('page-title', 'Loyalty Programme')
+@section('own-validation-errors', '1')
 
 @section('content')
 @php $currency = config('restaurant.currency'); @endphp
@@ -24,17 +25,13 @@
     <div class="col-lg-5">
         @if($canAdjust)
         <div class="panel p-4 mb-4">
-            <h2 class="h5">Adjust points</h2>
-            <form method="POST" action="{{ route('admin.loyalty.adjust') }}">
-                @csrf
-                <label class="form-label" for="loyaltyCustomer">Customer</label>
-                <select class="form-select mb-2" id="loyaltyCustomer" name="customer_id" required>@foreach($allCustomers as $customer)<option value="{{ $customer->id }}">{{ $customer->name }} · {{ $customer->phone }} ({{ $customer->loyalty_points }} pts)</option>@endforeach</select>
-                <label class="form-label" for="loyaltyPoints">Points (+ to add, − to remove)</label>
-                <input class="form-control mb-2" id="loyaltyPoints" type="number" name="points" step="1" required>
-                <label class="form-label" for="loyaltyNote">Reason</label>
-                <input class="form-control mb-3" id="loyaltyNote" name="note" minlength="5" maxlength="255" required>
-                <button class="btn btn-primary" type="submit">Adjust</button>
-            </form>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <h2 class="h5 mb-0">Manual adjustments</h2>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#adjust-points">
+                    <i class="fas fa-plus-minus me-1"></i> Adjust points
+                </button>
+            </div>
+            <p class="small text-muted mb-0">Add or remove points for a customer. A reason is always recorded in the ledger.</p>
         </div>
         @endif
         <div class="panel p-4">
@@ -71,4 +68,143 @@
         {{ $ledger->links() }}
     </div></div>
 </div>
+
+@if($canAdjust)
+    {{-- =========================================================
+         ADJUST POINTS MODAL
+         OUTSIDE THE TABLE
+    ========================================================= --}}
+    <div class="modal fade"
+         id="adjust-points"
+         tabindex="-1"
+         aria-labelledby="adjust-pointsLabel"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+
+            <form class="modal-content"
+                  method="POST"
+                  action="{{ route('admin.loyalty.adjust') }}">
+
+                @csrf
+
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title"
+                            id="adjust-pointsLabel">
+                            <i class="fas fa-plus-minus me-2 text-primary"></i>
+                            Adjust points
+                        </h5>
+                        <small class="text-muted">
+                            Use a positive number to add points and a negative number to remove them.
+                        </small>
+                    </div>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label"
+                               for="loyaltyCustomer">
+                            Customer <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
+
+                        <select class="form-select @error('customer_id') is-invalid @enderror"
+                                id="loyaltyCustomer"
+                                name="customer_id"
+                                required>
+                            @foreach($allCustomers as $customer)
+                                <option value="{{ $customer->id }}"
+                                    @selected((string) old('customer_id') === (string) $customer->id)>
+                                    {{ $customer->name }} · {{ $customer->phone }} ({{ $customer->loyalty_points }} pts)
+                                </option>
+                            @endforeach
+                        </select>
+
+                        @error('customer_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"
+                               for="loyaltyPoints">
+                            Points (+ to add, − to remove) <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
+
+                        <input class="form-control @error('points') is-invalid @enderror"
+                               id="loyaltyPoints"
+                               type="number"
+                               name="points"
+                               step="1"
+                               value="{{ old('points') }}"
+                               placeholder="e.g. 50 or -20"
+                               required>
+
+                        @error('points')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"
+                               for="loyaltyNote">
+                            Reason <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
+
+                        <input class="form-control @error('note') is-invalid @enderror"
+                               id="loyaltyNote"
+                               name="note"
+                               value="{{ old('note') }}"
+                               minlength="5"
+                               maxlength="255"
+                               placeholder="e.g. Birthday bonus"
+                               required>
+
+                        @error('note')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+
+                        <small class="text-muted">At least 5 characters.</small>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-light"
+                            data-bs-dismiss="modal">
+                        <i class="fas fa-xmark me-1"></i>
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        <i class="fas fa-floppy-disk me-1"></i>
+                        Adjust
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+    @if($errors->hasAny(['customer_id', 'points', 'note']))
+        @push('scripts')
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.bootstrap) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('adjust-points')).show();
+            }
+        });
+        </script>
+        @endpush
+    @endif
+@endif
 @endsection

@@ -11,8 +11,19 @@
         @php($granted = $staff->permissions->pluck('ability')->all())
         <div class="border rounded p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div>
-                <h2 class="h6 mb-1">{{ $staff->name }}</h2>
-                <span class="text-muted">{{ $staff->email }} · {{ $staff->branch_id ? 'Branch ' . $staff->branch_id : 'All assigned branches' }}</span>
+                <h2 class="h6 mb-1">
+                    {{ $staff->name }}
+                    @php($roleKey = in_array('admin', $granted, true) ? null : \App\Support\StaffRoles::match($granted))
+                    @if(in_array('admin', $granted, true))
+                    @elseif($roleKey)
+                        <span class="badge bg-primary ms-1"><i class="{{ $roles[$roleKey]['icon'] }} me-1"></i>{{ $roles[$roleKey]['label'] }}</span>
+                    @elseif(count($granted))
+                        <span class="badge bg-info ms-1"><i class="fas fa-sliders me-1"></i>Custom · {{ count($granted) }} permissions</span>
+                    @else
+                        <span class="badge bg-warning ms-1"><i class="fas fa-user-lock me-1"></i>No access yet</span>
+                    @endif
+                </h2>
+                <span class="text-muted">{{ $staff->email }} · {{ $staff->branch?->name ?? 'All branches' }}</span>
             </div>
             @if(in_array('admin', $granted, true))
                 <span class="badge text-bg-danger">Wildcard admin — CLI managed</span>
@@ -55,6 +66,17 @@
                         @foreach(collect($errors->messages())->filter(fn ($messages, $key) => str_starts_with($key, 'abilities'))->flatten() as $message)
                             <div class="invalid-feedback d-block mb-2">{{ $message }}</div>
                         @endforeach
+
+                        <div class="role-picker mb-3 p-3 rounded border bg-light">
+                            <label class="form-label" for="role-start-{{ $staff->id }}"><i class="fas fa-user-shield me-1"></i>Start from a role</label>
+                            <select class="form-select form-select-sm" id="role-start-{{ $staff->id }}" data-role-picker>
+                                <option value="">Keep the current selection</option>
+                                @foreach($roles as $key => $role)
+                                    <option value="{{ $key }}" data-abilities="{{ implode(',', $role['abilities']) }}">{{ $role['label'] }} ({{ count($role['abilities']) }} permissions)</option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">Ticks that role's permissions below. You can still adjust them before saving.</div>
+                        </div>
 
                         <div class="row">
                             @foreach($abilities as $ability => $label)
@@ -108,6 +130,17 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('form[data-modal-form]').forEach(function (form) {
         form.addEventListener('submit', function () {
             sessionStorage.setItem('pendingModal', this.closest('.modal').id);
+        });
+    });
+
+    document.querySelectorAll('[data-role-picker]').forEach(function (picker) {
+        picker.addEventListener('change', function () {
+            const option = picker.selectedOptions[0];
+            if (!option || !option.value) { return; }
+            const wanted = option.dataset.abilities.split(',');
+            picker.closest('form').querySelectorAll('input[name="abilities[]"]').forEach(function (box) {
+                box.checked = wanted.includes(box.value);
+            });
         });
     });
 

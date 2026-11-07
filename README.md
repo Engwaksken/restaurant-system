@@ -44,6 +44,8 @@ php artisan tenants:assign supplier <supplier-id> <restaurant-id>
 php artisan tenants:assign chat_conversation <conversation-id> <restaurant-id>
 ```
 
+To find records that are still unowned (for example, suppliers missing from the live list), run `php artisan tenants:unassigned`. Each one stays hidden until it is assigned.
+
 Reassignment across tenants requires the explicit `--force` option and a reviewed mapping. Grant least-privilege abilities from the tenant-scoped **Settings → Roles & Permissions** screen or with `php artisan users:permission <user-id> <ability>`. The screen exposes an explicit allowlist and cannot manage wildcard administrators. Granting `admin` requires `--super-admin` on the CLI.
 
 ## Checkout configuration
@@ -82,4 +84,4 @@ Generic module writes remain disabled until implemented with domain-specific val
 
 ## Release
 
-Back up and rehearse migrations on a production-like copy before applying them to production. Set `APP_ENV=production`, `APP_DEBUG=false`, HTTPS and secure session settings; configure queue, mail, storage, monitoring, backups, and payment provider credentials. Run the feature suite and business UAT before opening traffic. See [PRODUCTION_READINESS_AUDIT.md](PRODUCTION_READINESS_AUDIT.md) for remaining module and deployment gates.
+Back up and rehearse migrations on a production-like copy before applying them to production. `vendor/` is not in git, so deploy on the server with `scripts/deploy.sh` (it runs `composer install --no-dev` and migrations) instead of copying files. The server needs PHP 8.3 or newer. Set `APP_ENV=production`, `APP_DEBUG=false`, HTTPS and secure session settings; configure queue, mail, storage, monitoring, backups, and payment provider credentials. Run the feature suite and business UAT before opening traffic. See [PRODUCTION_READINESS_AUDIT.md](PRODUCTION_READINESS_AUDIT.md) for remaining module and deployment gates.

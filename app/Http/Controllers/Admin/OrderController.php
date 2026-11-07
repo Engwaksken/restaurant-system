@@ -14,6 +14,9 @@ use Illuminate\View\View;
 
 class OrderController extends Controller
 {
+    private const ACTIVE_STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'served'];
+    private const FINISHED_STATUSES = ['completed', 'cancelled'];
+
     public function index(Request $request): View
     {
         return $this->renderOrders($request, null, 'All Orders', 'fas fa-receipt');
@@ -42,6 +45,23 @@ class OrderController extends Controller
     public function cancelled(Request $request): View
     {
         return $this->renderOrders($request, 'cancelled', 'Cancelled Orders', 'fas fa-ban');
+    }
+
+    /** POS: orders still in progress (not yet completed or cancelled). */
+    public function current(Request $request): View
+    {
+        return $this->renderOrders($request, null, 'Current Orders', 'fas fa-clock', self::ACTIVE_STATUSES);
+    }
+
+    /** POS: finished orders, filterable by date range. */
+    public function history(Request $request): View
+    {
+        $request->validate([
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+        ]);
+
+        return $this->renderOrders($request, null, 'Order History', 'fas fa-clock-rotate-left', self::FINISHED_STATUSES, true);
     }
 
     public function show(Order $order): View
@@ -108,7 +128,9 @@ class OrderController extends Controller
         Request $request,
         ?string $type,
         string $pageTitle,
-        string $pageIcon
+        string $pageIcon,
+        ?array $statuses = null,
+        bool $dateRange = false
     ): View {
         $user = auth()->user();
         abort_unless($user && $user->restaurant_id && ($user->can('orders.view') || $user->can('orders.manage') || $user->can('admin')), 403);
@@ -122,6 +144,13 @@ class OrderController extends Controller
         $relations = $this->safeRelations();
         if ($relations !== []) {
             $query->with($relations);
+        }
+
+        if ($statuses !== null) {
+            $query->whereIn('status', $statuses);
+        }
+        if ($dateRange) {
+            $this->applyDateRange($query, $request);
         }
 
         if ($type === 'cancelled') {
@@ -174,6 +203,12 @@ class OrderController extends Controller
         } elseif ($type !== null) {
             $this->applyOrderTypeFilter($statsBase, $type);
         }
+        if ($statuses !== null) {
+            $statsBase->whereIn('status', $statuses);
+        }
+        if ($dateRange) {
+            $this->applyDateRange($statsBase, $request);
+        }
 
         $statistics = [
             'total' => (clone $statsBase)->count(),
@@ -190,6 +225,9 @@ class OrderController extends Controller
             'completed' => 'Completed',
             'cancelled' => 'Cancelled',
         ];
+        if ($statuses !== null) {
+            $statusOptions = array_intersect_key($statusOptions, array_flip($statuses));
+        }
 
         $paymentStatusOptions = [
             'unpaid' => 'Unpaid',
@@ -204,7 +242,8 @@ class OrderController extends Controller
             'pageIcon',
             'type',
             'statusOptions',
-            'paymentStatusOptions'
+            'paymentStatusOptions',
+            'dateRange'
         ));
     }
 
@@ -225,6 +264,17 @@ class OrderController extends Controller
 
         if (Schema::hasColumn('orders', 'type')) {
             $query->where('type', $type);
+        }
+    }
+
+    private function applyDateRange(Builder $query, Request $request): void
+    {
+        $column = 'COALESCE(orders.ordered_at, orders.created_at)';
+        if ($request->filled('date_from')) {
+            $query->whereRaw($column . ' >= ?', [\Illuminate\Support\Carbon::parse($request->input('date_from'))->startOfDay()]);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereRaw($column . ' <= ?', [\Illuminate\Support\Carbon::parse($request->input('date_to'))->endOfDay()]);
         }
     }
 

@@ -22,6 +22,7 @@ class PermissionManagementController extends Controller
         'menu.categories.manage' => 'Manage menu categories',
         'menu.recipes.view' => 'View recipes',
         'menu.recipes.manage' => 'Manage recipes',
+        'menu.availability.manage' => 'Mark menu items available or unavailable',
         'admin.pos.manage' => 'Operate point of sale',
         'orders.view' => 'View orders',
         'orders.manage' => 'Manage order status',
@@ -55,6 +56,7 @@ class PermissionManagementController extends Controller
         'purchasing.purchase-orders.cancel' => 'Cancel unreceived purchase orders',
         'purchasing.supplier-payments.create' => 'Record supplier payments',
         'settings.roles-permissions.manage' => 'Manage staff permissions',
+        'settings.activity-logs.view' => 'View the restaurant activity log',
         'chatbot.view' => 'View tenant chatbot conversations',
     ];
 

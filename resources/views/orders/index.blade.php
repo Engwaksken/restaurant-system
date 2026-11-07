@@ -135,13 +135,26 @@
                         </select>
                     </div>
 
+                    @if($dateRange ?? false)
+                        <div class="col-6 col-md-3">
+                            <label class="visually-hidden" for="ordersDateFrom">From date</label>
+                            <input type="date" id="ordersDateFrom" name="date_from" class="form-control"
+                                   value="{{ request('date_from') }}" title="From date">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="visually-hidden" for="ordersDateTo">To date</label>
+                            <input type="date" id="ordersDateTo" name="date_to" class="form-control"
+                                   value="{{ request('date_to') }}" title="To date">
+                        </div>
+                    @endif
+
                     <div class="col-12 col-md-2 d-flex gap-2">
                         <button class="btn btn-outline-primary flex-fill">
                             <i class="fas fa-filter me-1"></i>
                             Filter
                         </button>
 
-                        @if(request()->hasAny(['search', 'status', 'payment_status']))
+                        @if(request()->hasAny(['search', 'status', 'payment_status', 'date_from', 'date_to']))
                             <a href="{{ url()->current() }}"
                                class="btn btn-outline-secondary"
                                title="Clear filters">

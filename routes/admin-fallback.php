@@ -21,14 +21,11 @@ use Illuminate\Support\Facades\Route;
 $adminModuleRoutes = [
     // POS
     ['admin.pos.held', 'pos/held', 'pos.held'],
-    ['admin.pos.current', 'pos/current', 'pos.current'],
-    ['admin.pos.history', 'pos/history', 'pos.history'],
     ['admin.pos.returns', 'pos/returns', 'pos.returns'],
 
     // Menu
     ['admin.menu-addons.index', 'menu-addons', 'menu.addons'],
     ['admin.menu-variants.index', 'menu-variants', 'menu.variants'],
-    ['admin.menu-availability.index', 'menu-availability', 'menu.availability'],
 
     // Tables
     ['admin.qr-ordering.index', 'qr-ordering', 'tables.qr'],
@@ -74,7 +71,6 @@ $adminModuleRoutes = [
     ['admin.settings.ai', 'settings/ai', 'settings.ai'],
     ['admin.settings.accessibility', 'settings/accessibility', 'settings.accessibility'],
     ['admin.settings.backups', 'settings/backups', 'settings.backups'],
-    ['admin.settings.activity-logs', 'settings/activity-logs', 'settings.activity-logs'],
 ];
 
 Route::middleware(['auth'])

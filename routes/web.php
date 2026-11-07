@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ChatbotController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\FeedbackController;
+use App\Http\Controllers\Admin\MenuAvailabilityController;
 use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\MenuCategoryController;
 use App\Http\Controllers\Admin\OrderController;
@@ -207,6 +209,13 @@ Route::middleware('auth')
             ->whereNumber('reservation')->name('reservations.update');
         Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])
             ->whereNumber('reservation')->name('reservations.status');
+
+        Route::get('/pos/current', [OrderController::class, 'current'])->name('pos.current');
+        Route::get('/pos/history', [OrderController::class, 'history'])->name('pos.history');
+        Route::get('/menu-availability', [MenuAvailabilityController::class, 'index'])->name('menu-availability.index');
+        Route::patch('/menu-availability/{item}', [MenuAvailabilityController::class, 'update'])
+            ->whereNumber('item')->name('menu-availability.update');
+        Route::get('/settings/activity-logs', [ActivityLogController::class, 'index'])->name('settings.activity-logs');
 
         Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
         Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');

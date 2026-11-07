@@ -59,23 +59,174 @@
             font-size: 1.1rem;
         }
 
-        .floating-accessibility,
-        .floating-chat {
-            position: fixed;
-            right: 18px;
-            width: 54px;
-            height: 54px;
-            border-radius: 50%;
-            border: 0;
-            z-index: 1055;
+        .order-modal .modal-header,
+        .order-modal .modal-footer {
+            padding: .75rem 1rem;
         }
 
-        .floating-chat {
-            bottom: 18px;
+        .order-modal .form-label {
+            font-size: .8rem;
+            font-weight: 600;
+            margin-bottom: .25rem;
+        }
+
+        .order-modal .form-control,
+        .order-modal .form-select {
+            font-size: .875rem;
+        }
+
+        .order-section-title {
+            font-size: .75rem;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: #6c757d;
+        }
+
+        .cart-line + .cart-line {
+            border-top: 1px solid #e9ecef;
+        }
+
+        .cart-thumb,
+        .cart-thumb-placeholder {
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .cart-thumb-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f3f5;
+            color: #adb5bd;
+        }
+
+        .order-summary {
+            position: sticky;
+            top: 0;
         }
 
         .floating-accessibility {
+            position: fixed;
+            right: 18px;
             bottom: 84px;
+            z-index: 1055;
+        }
+
+        .floating-accessibility .btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+        }
+
+        .a11y-menu {
+            min-width: 220px;
+            padding: .35rem;
+            font-size: .875rem;
+        }
+
+        .a11y-menu .dropdown-item {
+            padding: .35rem .6rem;
+            border-radius: 6px;
+        }
+
+        .a11y-menu .dropdown-item i {
+            width: 1.25rem;
+        }
+
+        .a11y-menu .dropdown-divider {
+            margin: .35rem 0;
+        }
+
+        .a11y-menu .a11y-label {
+            font-size: .75rem;
+            font-weight: 600;
+            color: #6c757d;
+            padding: .25rem .6rem;
+        }
+
+        .chat-widget {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 1056;
+        }
+
+        .chat-launcher {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+        }
+
+        .chat-panel {
+            position: absolute;
+            right: 0;
+            bottom: 66px;
+            width: 360px;
+            height: 480px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+            padding: .75rem;
+            background: #f8f9fa;
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            padding: .5rem .75rem;
+            border-radius: 12px;
+            font-size: .875rem;
+            word-wrap: break-word;
+        }
+
+        .chat-bubble.bot {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            align-self: flex-start;
+        }
+
+        .chat-bubble.user {
+            background: #0d6efd;
+            color: #fff;
+            align-self: flex-end;
+        }
+
+        .chat-bubble ul {
+            padding-left: 1.1rem;
+            margin: .4rem 0 0;
+        }
+
+        @media (max-width: 575.98px) {
+            .chat-widget {
+                right: 12px;
+                bottom: 12px;
+            }
+
+            .chat-panel {
+                position: fixed;
+                left: 8px;
+                right: 8px;
+                bottom: 74px;
+                width: auto;
+                height: min(70vh, 520px);
+            }
+
+            .floating-accessibility {
+                right: 12px;
+                bottom: 76px;
+            }
         }
 
         .a11y-high-contrast {
@@ -86,9 +237,9 @@
             filter: grayscale(1);
         }
 
-        .a11y-reduce-motion *,
-        .a11y-reduce-motion *::before,
-        .a11y-reduce-motion *::after {
+        html.a11y-reduce-motion *,
+        html.a11y-reduce-motion *::before,
+        html.a11y-reduce-motion *::after {
             transition: none !important;
             animation: none !important;
             scroll-behavior: auto !important;
@@ -126,6 +277,7 @@
     </div>
 </header>
 
+<main id="siteMain">
 
 <section class="hero">
     <div class="container">
@@ -343,6 +495,7 @@
                                 data-id="{{ $item->id }}"
                                 data-name="{{ $item->name }}"
                                 data-price="{{ $item->price }}"
+                                data-image="{{ !empty($item->image_path) ? asset('storage/' . $item->image_path) : '' }}"
                             >
                                 Add to Order
                             </button>
@@ -356,108 +509,173 @@
 
 </section>
 
+</main>
+
 
 <div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <form id="checkoutForm" method="POST" action="{{ route('order.store') }}" class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+        <form id="checkoutForm" method="POST" action="{{ route('order.store') }}" class="modal-content order-modal border-0 shadow">
             @csrf
 
-            <div class="modal-header">
-                <h5 class="modal-title" id="cartModalLabel">Your order</h5>
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold" id="cartModalLabel">
+                    Your cart <span class="text-muted fw-normal" id="cartTitleCount"></span>
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="modal-body">
-                <div id="cartEmpty" class="text-muted mb-3">Add menu items to start an order.</div>
-                <ul id="cartItems" class="list-group list-group-flush mb-3"></ul>
-                <div class="fw-bold mb-4">Estimated subtotal: {{ $restaurant->currency }} <span id="cartSubtotal">0.00</span></div>
+            <div class="modal-body p-0">
 
                 @if($errors->any())
-                    <div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+                    <div class="alert alert-danger rounded-0 mb-0 py-2 px-3 small">
+                        <ul class="mb-0 ps-3">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                    </div>
                 @endif
 
-                <div id="cartPayload"></div>
+                <div class="row g-0">
 
-                <div class="row g-3">
-                    <div class="col-md-6"><label class="form-label" for="customerName">Name</label><input class="form-control" id="customerName" name="name" value="{{ old('name') }}" required maxlength="255"></div>
-                    <div class="col-md-6"><label class="form-label" for="customerPhone">Phone</label><input class="form-control" id="customerPhone" name="phone" value="{{ old('phone') }}" required maxlength="40"></div>
-                    <div class="col-md-6"><label class="form-label" for="customerEmail">Email (optional)</label><input class="form-control" id="customerEmail" type="email" name="email" value="{{ old('email') }}" maxlength="255"></div>
-                    <div class="col-md-6"><label class="form-label" for="customerAddress">Delivery address (optional)</label><input class="form-control" id="customerAddress" name="address" value="{{ old('address') }}" maxlength="1000"></div>
-                    @if($branches->count() > 1)
-                        <div class="col-md-6"><label class="form-label" for="orderBranch">Branch</label><select class="form-select" id="orderBranch" name="branch_id" required>@foreach($branches as $branch)<option value="{{ $branch->id }}">{{ $branch->name }}</option>@endforeach</select></div>
-                    @elseif($branches->count() === 1)
-                        <input type="hidden" name="branch_id" value="{{ $branches->first()->id }}">
-                    @endif
-                    <div class="col-12"><label class="form-label" for="orderNotes">Notes (optional)</label><textarea class="form-control" id="orderNotes" name="notes" maxlength="1000">{{ old('notes') }}</textarea></div>
+                    <div class="col-lg-7 p-3">
+                        <div class="order-section-title mb-2">Items</div>
+
+                        <div id="cartEmpty" class="text-center text-muted py-4">
+                            <i class="fas fa-basket-shopping fs-2 mb-2 d-block"></i>
+                            Your cart is empty. Add items from the menu.
+                        </div>
+
+                        <ul id="cartItems" class="list-unstyled mb-0"></ul>
+                    </div>
+
+                    <div class="col-lg-5 p-3 bg-light">
+                        <div class="order-section-title mb-2">Delivery details</div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-sm-6">
+                                <label class="form-label" for="customerName">Name</label>
+                                <input class="form-control form-control-sm" id="customerName" name="name" value="{{ old('name') }}" required maxlength="255">
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="customerPhone">Phone</label>
+                                <input class="form-control form-control-sm" id="customerPhone" name="phone" value="{{ old('phone') }}" required maxlength="40">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="customerEmail">Email <span class="text-muted fw-normal">(optional)</span></label>
+                                <input class="form-control form-control-sm" id="customerEmail" type="email" name="email" value="{{ old('email') }}" maxlength="255">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="customerAddress">Delivery address <span class="text-muted fw-normal">(optional)</span></label>
+                                <input class="form-control form-control-sm" id="customerAddress" name="address" value="{{ old('address') }}" maxlength="1000">
+                            </div>
+                            @if($branches->count() > 1)
+                                <div class="col-12">
+                                    <label class="form-label" for="orderBranch">Branch</label>
+                                    <select class="form-select form-select-sm" id="orderBranch" name="branch_id" required>
+                                        @foreach($branches as $branch)
+                                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @elseif($branches->count() === 1)
+                                <input type="hidden" name="branch_id" value="{{ $branches->first()->id }}">
+                            @endif
+                            <div class="col-12">
+                                <label class="form-label" for="orderNotes">Notes <span class="text-muted fw-normal">(optional)</span></label>
+                                <textarea class="form-control form-control-sm" id="orderNotes" name="notes" rows="2" maxlength="1000">{{ old('notes') }}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="order-section-title mb-2">Order summary</div>
+                        <div class="bg-white rounded border p-3 small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Subtotal</span>
+                                <span>{{ $restaurant->currency }} <span id="cartSubtotal">0.00</span></span>
+                            </div>
+                            <div class="text-muted" style="font-size: .75rem;">Taxes and delivery fees are confirmed when you place the order.</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div id="cartPayload"></div>
+            </div>
+
+            <div class="modal-footer border-top justify-content-between">
+                <div>
+                    <div class="small text-muted">Total</div>
+                    <div class="fw-bold fs-5">{{ $restaurant->currency }} <span id="footerTotal">0.00</span></div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Continue shopping</button>
+                    <button class="btn btn-success px-4" id="submitOrder" type="submit" disabled>Place order</button>
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Continue shopping</button>
-                <button class="btn btn-success" id="submitOrder" type="submit" disabled>Place order</button>
+        </form>
+    </div>
+</div>
+
+
+<div class="floating-accessibility dropup">
+    <button
+        type="button"
+        class="btn btn-dark shadow"
+        data-bs-toggle="dropdown"
+        data-bs-auto-close="outside"
+        aria-expanded="false"
+        aria-label="Accessibility options"
+        title="Accessibility"
+    >
+        <i class="fas fa-universal-access"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end a11y-menu shadow">
+        <li class="a11y-label">Text size</li>
+        <li class="px-2 pb-2">
+            <div class="btn-group btn-group-sm w-100" role="group" aria-label="Text size">
+                <button type="button" class="btn btn-outline-secondary" data-a11y-font="-1" aria-label="Decrease text size"><i class="fas fa-minus"></i></button>
+                <button type="button" class="btn btn-outline-secondary" data-a11y-font="1" aria-label="Increase text size"><i class="fas fa-plus"></i></button>
             </div>
-
-        </form>
-    </div>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li><button type="button" class="dropdown-item" data-a11y-toggle="high-contrast" aria-pressed="false"><i class="fas fa-circle-half-stroke"></i>High contrast</button></li>
+        <li><button type="button" class="dropdown-item" data-a11y-toggle="grayscale" aria-pressed="false"><i class="fas fa-droplet-slash"></i>Grayscale</button></li>
+        <li><button type="button" class="dropdown-item" data-a11y-toggle="reduce-motion" aria-pressed="false"><i class="fas fa-pause"></i>Reduce motion</button></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><button type="button" class="dropdown-item text-danger" data-a11y-reset><i class="fas fa-rotate-left"></i>Reset</button></li>
+    </ul>
 </div>
 
-
-<button
-    type="button"
-    class="btn btn-dark floating-accessibility"
-    title="Accessibility"
-    aria-label="Accessibility"
-    data-bs-toggle="offcanvas"
-    data-bs-target="#accessibilityPanel"
->
-    <i class="fas fa-universal-access"></i>
-</button>
-
-<button
-    type="button"
-    class="btn btn-primary floating-chat"
-    title="Chat with us"
-    aria-label="Chat with us"
-    data-bs-toggle="offcanvas"
-    data-bs-target="#chatPanel"
->
-    <i class="fas fa-comments"></i>
-</button>
-
-<div class="offcanvas offcanvas-end" id="accessibilityPanel" tabindex="-1" aria-labelledby="accessibilityPanelLabel">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="accessibilityPanelLabel">Accessibility</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body d-grid gap-2">
-        <button type="button" class="btn btn-outline-secondary" data-a11y-font="1">Increase text</button>
-        <button type="button" class="btn btn-outline-secondary" data-a11y-font="-1">Decrease text</button>
-        <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="high-contrast">High contrast</button>
-        <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="grayscale">Grayscale</button>
-        <button type="button" class="btn btn-outline-secondary" data-a11y-toggle="reduce-motion">Reduce motion</button>
-        <button type="button" class="btn btn-outline-danger" data-a11y-reset>Reset</button>
-    </div>
-</div>
-
-<div class="offcanvas offcanvas-end" id="chatPanel" tabindex="-1" aria-labelledby="chatPanelLabel">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="chatPanelLabel">Restaurant Assistant</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body d-flex flex-column">
-        <div id="chatMessages" class="d-flex flex-column gap-2 flex-grow-1">
-            <div class="alert alert-light border mb-0">Hello. Ask me about the menu, prices, orders or reservations.</div>
+<div class="chat-widget" id="chatWidget">
+    <section class="chat-panel card shadow-lg border-0" id="chatPanel" aria-labelledby="chatPanelLabel" hidden>
+        <header class="card-header bg-primary text-white d-flex align-items-center justify-content-between py-2 border-0">
+            <div>
+                <div class="fw-semibold" id="chatPanelLabel">Restaurant Assistant</div>
+                <small class="opacity-75">Ask about the menu, prices or orders</small>
+            </div>
+            <button type="button" class="btn btn-sm text-white" id="chatClose" aria-label="Close chat">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </header>
+        <div class="chat-messages" id="chatMessages" aria-live="polite">
+            <div class="chat-bubble bot">Hello. Ask me about the menu, prices, orders or reservations.</div>
         </div>
-        <form id="chatForm" class="d-flex gap-2 mt-3">
-            <input id="chatInput" class="form-control" maxlength="1000" placeholder="Type your message" required>
-            <button class="btn btn-primary" type="submit">Send</button>
+        <form id="chatForm" class="card-footer bg-white p-2 d-flex gap-2 border-top">
+            <input id="chatInput" class="form-control form-control-sm" maxlength="1000" placeholder="Type your message" aria-label="Message" required>
+            <button class="btn btn-primary btn-sm px-3" type="submit" aria-label="Send message">
+                <i class="fas fa-paper-plane"></i>
+            </button>
         </form>
-    </div>
+    </section>
+    <button type="button" class="btn btn-primary shadow chat-launcher" id="chatLauncher" aria-expanded="false" aria-controls="chatPanel" aria-label="Chat with us">
+        <i class="fas fa-comments"></i>
+    </button>
 </div>
 
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+    const currency = @json($restaurant->currency);
+    const money = value => Number(value).toFixed(2);
 
     const search = document.getElementById('menuSearch');
     const items = document.querySelectorAll('.menu-item');
@@ -468,6 +686,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const cartPayload = document.getElementById('cartPayload');
     const submitOrder = document.getElementById('submitOrder');
     const cartCount = document.getElementById('cartCount');
+    const cartTitleCount = document.getElementById('cartTitleCount');
+    const cartSubtotal = document.getElementById('cartSubtotal');
+    const footerTotal = document.getElementById('footerTotal');
     const headerSubtotal = document.getElementById('headerSubtotal');
 
     function renderCart() {
@@ -486,21 +707,49 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         cartItems.forEach((line, key) => {
-            subtotal += line.price * line.quantity;
+            const lineTotal = line.price * line.quantity;
+            subtotal += lineTotal;
             count += line.quantity;
 
             const row = document.createElement('li');
-            row.className = 'list-group-item d-flex justify-content-between align-items-center gap-2';
+            row.className = 'cart-line d-flex align-items-center gap-3 py-3';
 
-            const text = document.createElement('span');
-            text.textContent = `${line.name} — ${(line.price * line.quantity).toFixed(2)}`;
+            let thumb;
+            if (line.image) {
+                thumb = document.createElement('img');
+                thumb.src = line.image;
+                thumb.alt = '';
+                thumb.className = 'cart-thumb';
+            } else {
+                thumb = document.createElement('div');
+                thumb.className = 'cart-thumb-placeholder';
+                thumb.innerHTML = '<i class="fas fa-utensils"></i>';
+            }
+
+            const info = document.createElement('div');
+            info.className = 'flex-grow-1 min-w-0';
+            const name = document.createElement('div');
+            name.className = 'fw-semibold small text-truncate';
+            name.textContent = line.name;
+            const unit = document.createElement('div');
+            unit.className = 'text-muted small';
+            unit.textContent = `${currency} ${money(line.price)} each`;
+            info.append(name, unit);
 
             const controls = document.createElement('div');
-            controls.className = 'd-flex align-items-center gap-2';
+            controls.className = 'd-flex flex-column align-items-end gap-2';
+            const total = document.createElement('div');
+            total.className = 'fw-semibold small';
+            total.textContent = `${currency} ${money(lineTotal)}`;
+
+            const group = document.createElement('div');
+            group.className = 'btn-group btn-group-sm';
+            group.setAttribute('role', 'group');
+            group.setAttribute('aria-label', `Quantity for ${line.name}`);
 
             const minus = document.createElement('button');
             minus.type = 'button';
-            minus.className = 'btn btn-sm btn-outline-secondary';
+            minus.className = 'btn btn-outline-secondary';
             minus.setAttribute('aria-label', 'Decrease quantity');
             minus.innerHTML = '<i class="fas fa-minus"></i>';
             minus.addEventListener('click', () => {
@@ -510,18 +759,19 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             const qty = document.createElement('span');
-            qty.className = 'fw-semibold';
+            qty.className = 'btn btn-outline-secondary disabled fw-semibold';
             qty.textContent = line.quantity;
 
             const plus = document.createElement('button');
             plus.type = 'button';
-            plus.className = 'btn btn-sm btn-outline-secondary';
+            plus.className = 'btn btn-outline-secondary';
             plus.setAttribute('aria-label', 'Increase quantity');
             plus.innerHTML = '<i class="fas fa-plus"></i>';
             plus.addEventListener('click', () => { line.quantity++; renderCart(); });
 
-            controls.append(minus, qty, plus);
-            row.append(text, controls);
+            group.append(minus, qty, plus);
+            controls.append(total, group);
+            row.append(thumb, info, controls);
             cartList.append(row);
 
             addHidden(`items[${index}][menu_item_id]`, line.id);
@@ -532,9 +782,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         cartEmpty.hidden = cartItems.size > 0;
-        document.getElementById('cartSubtotal').textContent = subtotal.toFixed(2);
-        headerSubtotal.textContent = subtotal.toFixed(2);
+        cartSubtotal.textContent = money(subtotal);
+        footerTotal.textContent = money(subtotal);
+        headerSubtotal.textContent = money(subtotal);
         cartCount.textContent = count;
+        cartTitleCount.textContent = count ? `(${count})` : '';
         submitOrder.disabled = cartItems.size === 0;
     }
 
@@ -597,7 +849,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 + addons.map((el) => ` + ${el.dataset.name}`).join('');
             const price = (variant ? Number(variant.dataset.price) : Number(button.dataset.price))
                 + addons.reduce((sum, el) => sum + Number(el.dataset.price), 0);
-            const line = cartItems.get(key) || { id, variantId: variant ? variant.value : null, addonIds, name, price, quantity: 0 };
+            const line = cartItems.get(key) || { id, variantId: variant ? variant.value : null, addonIds, name, price, image: button.dataset.image || '', quantity: 0 };
             line.quantity++;
             cartItems.set(key, line);
             renderCart();
@@ -613,21 +865,23 @@ document.addEventListener('DOMContentLoaded', function () {
     @endif
 
 });
-</script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-<script>
 document.addEventListener('DOMContentLoaded', function () {
 
     const root = document.documentElement;
     const prefs = JSON.parse(localStorage.getItem('a11y') || '{}');
     let fontScale = prefs.font || 0;
     const toggles = prefs.toggles || {};
+    const main = document.getElementById('siteMain');
 
     function applyA11y() {
         root.style.fontSize = fontScale ? `${100 + fontScale * 10}%` : '';
-        ['high-contrast', 'grayscale', 'reduce-motion'].forEach(name => {
-            document.body.classList.toggle(`a11y-${name}`, !!toggles[name]);
+        ['high-contrast', 'grayscale'].forEach(name => {
+            main.classList.toggle(`a11y-${name}`, !!toggles[name]);
+        });
+        root.classList.toggle('a11y-reduce-motion', !!toggles['reduce-motion']);
+        document.querySelectorAll('[data-a11y-toggle]').forEach(button => {
+            button.setAttribute('aria-pressed', String(!!toggles[button.dataset.a11yToggle]));
         });
         localStorage.setItem('a11y', JSON.stringify({ font: fontScale, toggles }));
     }
@@ -655,39 +909,51 @@ document.addEventListener('DOMContentLoaded', function () {
 
     applyA11y();
 
+    const launcher = document.getElementById('chatLauncher');
+    const panel = document.getElementById('chatPanel');
+    const closeButton = document.getElementById('chatClose');
     const chatForm = document.getElementById('chatForm');
     const chatInput = document.getElementById('chatInput');
     const chatMessages = document.getElementById('chatMessages');
 
-    function addBubble(text, items = []) {
+    function setChatOpen(open) {
+        panel.hidden = !open;
+        launcher.setAttribute('aria-expanded', String(open));
+        launcher.querySelector('i').className = open ? 'fas fa-xmark' : 'fas fa-comments';
+        if (open) { chatInput.focus(); }
+    }
+
+    launcher.addEventListener('click', () => setChatOpen(panel.hidden));
+    closeButton.addEventListener('click', () => setChatOpen(false));
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !panel.hidden) { setChatOpen(false); }
+    });
+
+    function addBubble(text, list = [], side = 'bot') {
         const bubble = document.createElement('div');
-        bubble.className = 'alert alert-light border mb-0';
+        bubble.className = `chat-bubble ${side}`;
         bubble.textContent = text;
 
-        if (items.length) {
-            const list = document.createElement('ul');
-            list.className = 'mb-0 mt-2';
-            items.forEach(item => {
+        if (list.length) {
+            const ul = document.createElement('ul');
+            list.forEach(item => {
                 const li = document.createElement('li');
-                li.textContent = `${item.name} — ${Number(item.price).toFixed(2)}`;
-                list.append(li);
+                li.textContent = `${item.name} — ${currency} ${Number(item.price).toFixed(2)}`;
+                ul.append(li);
             });
-            bubble.append(list);
+            bubble.append(ul);
         }
 
         chatMessages.append(bubble);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    chatForm?.addEventListener('submit', async event => {
+    chatForm.addEventListener('submit', async event => {
         event.preventDefault();
         const message = chatInput.value.trim();
         if (!message) return;
 
-        const user = document.createElement('div');
-        user.className = 'alert alert-primary mb-0 ms-auto';
-        user.textContent = message;
-        chatMessages.append(user);
+        addBubble(message, [], 'user');
         chatInput.value = '';
 
         try {

@@ -6,7 +6,7 @@ class RestaurantTable extends Model {
     /** Statuses staff may set directly; `reserved` is driven by reservations. */
     public const MANUAL_STATUSES = ['available', 'occupied', 'cleaning', 'inactive'];
 
-    protected $fillable = ['branch_id', 'floor_id', 'name', 'code', 'capacity', 'status'];
+    protected $fillable = ['branch_id', 'floor_id', 'name', 'code', 'capacity', 'status', 'qr_token'];
     protected $casts = ['capacity' => 'integer'];
     public function branch(): BelongsTo { return $this->belongsTo(Branch::class); }
     public function floor(): BelongsTo { return $this->belongsTo(Floor::class); }

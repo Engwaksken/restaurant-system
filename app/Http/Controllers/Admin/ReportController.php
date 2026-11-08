@@ -8,9 +8,20 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Contracts\View\View;
 
 class ReportController extends Controller
 {
+    public function index(Request $request): View
+    {
+        $orders = $this->query($request);
+        $summary = (clone $orders)->selectRaw('COUNT(*) as order_count, COALESCE(SUM(total), 0) as revenue, COALESCE(SUM(paid_amount), 0) as paid, COALESCE(SUM(balance), 0) as outstanding')->first();
+        $daily = (clone $orders)->selectRaw('DATE(ordered_at) as day, COUNT(*) as orders, COALESCE(SUM(total), 0) as revenue')
+            ->groupByRaw('DATE(ordered_at)')->orderByDesc('day')->limit(31)->get();
+
+        return view('admin.reports.index', compact('summary', 'daily'));
+    }
+
     private function query(Request $request): Builder
     {
         $user = auth()->user();

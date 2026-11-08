@@ -103,6 +103,28 @@ class TableController extends Controller
         ]);
     }
 
+    /** QR ordering setup for tables in the signed-in user's branch scope. */
+    public function qrOrdering(Request $request): View
+    {
+        $user = $this->authorizeTables($request, 'view');
+        $tables = $this->whereUserBranch(RestaurantTable::query(), $user)
+            ->with(['branch:id,name', 'floor:id,name'])
+            ->orderBy('branch_id')->orderBy('name')->paginate(50)->withQueryString();
+
+        return view('admin.tables.qr-ordering', ['tables' => $tables, 'canManage' => $this->canManage($request)]);
+    }
+
+    public function createQr(Request $request, int $table): RedirectResponse
+    {
+        $user = $this->authorizeTables($request, 'manage');
+        $record = $this->whereUserBranch(RestaurantTable::query(), $user)->findOrFail($table);
+        if (!$record->qr_token) {
+            $record->forceFill(['qr_token' => Str::random(48)])->save();
+        }
+
+        return back()->with('success', 'QR ordering link created for ' . $record->name . '.');
+    }
+
     public function storeTable(Request $request): RedirectResponse
     {
         $user = $this->authorizeTables($request, 'manage');

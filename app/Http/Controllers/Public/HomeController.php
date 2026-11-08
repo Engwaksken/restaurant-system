@@ -11,7 +11,7 @@ use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(): View
+    public function index(\Illuminate\Http\Request $request): View
     {
         $restaurant = Restaurant::query()
             ->where('code', config('restaurant.public_code'))
@@ -43,6 +43,10 @@ class HomeController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
+        $qrTable = $request->filled('table') ? \App\Models\RestaurantTable::query()
+            ->where('qr_token', $request->query('table'))
+            ->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurant->id)->where('is_active', true))
+            ->first() : null;
 
         $gatewaySettings = app(\App\Services\Payments\GatewaySettings::class);
         $gatewaySettings->apply($restaurant);
@@ -57,6 +61,7 @@ class HomeController extends Controller
             'categories',
             'menuItems',
             'branches',
+            'qrTable',
             'restaurant',
             'paymentGateways',
             'manualMethods',

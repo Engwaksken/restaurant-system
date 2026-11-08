@@ -55,6 +55,7 @@ class PublicOrderController extends Controller
             'email' => [$needsEmail ? 'required' : 'nullable', 'email', 'max:255'],
             'payment_option' => ['required', Rule::in(['cash_on_delivery', ...$paymentGateways, ...$manualOptions])],
             'address' => ['nullable', 'string', 'max:1000'],
+            'table_token' => ['nullable', 'string', 'max:100'],
             'branch_id' => [
                 Rule::requiredIf($singleBranchId === null),
                 'nullable',
@@ -74,13 +75,18 @@ class PublicOrderController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $order = DB::transaction(function () use ($validated, $restaurant, $singleBranchId, $inventory, $pricing): array {
+        $qrTable = !empty($validated['table_token'])
+            ? \App\Models\RestaurantTable::query()->where('qr_token', $validated['table_token'])
+                ->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurant->id)->where('is_active', true))->firstOrFail()
+            : null;
+
+        $order = DB::transaction(function () use ($validated, $restaurant, $singleBranchId, $inventory, $pricing, $qrTable): array {
             $priced = $pricing->price((int) $restaurant->id, $validated['items'], fn ($query) => $query
                 ->whereHas('category', fn ($categories) => $categories
                     ->where('restaurant_id', $restaurant->id)
                     ->where('is_active', true)));
 
-            $branchId = $singleBranchId ?? (int) $validated['branch_id'];
+            $branchId = $qrTable?->branch_id ?? $singleBranchId ?? (int) $validated['branch_id'];
             $customer = Customer::query()->firstOrCreate(
                 ['restaurant_id' => $restaurant->id, 'phone' => $validated['phone']],
                 [
@@ -104,7 +110,8 @@ class PublicOrderController extends Controller
                 'branch_id' => $branchId,
                 'customer_id' => $customer->id,
                 'order_number' => app(OrderNumberGenerator::class)->next('WEB'),
-                'order_type' => 'online',
+                'restaurant_table_id' => $qrTable?->id,
+                'order_type' => $qrTable ? 'dine_in' : 'online',
                 'payment_preference' => $validated['payment_option'],
                 'status' => 'pending',
                 'subtotal' => $subtotal,

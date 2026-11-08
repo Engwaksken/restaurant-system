@@ -427,7 +427,11 @@
                                 <label class="form-label" for="customerAddress">Delivery address <span class="text-muted fw-normal">(optional)</span></label>
                                 <input class="form-control form-control-sm" id="customerAddress" name="address" value="{{ old('address') }}" maxlength="1000" placeholder="e.g. Plot 12, Kampala Road, near the fuel station" autocomplete="street-address">
                             </div>
-                            @if($branches->count() > 1)
+                            @if($qrTable)
+                                <input type="hidden" name="table_token" value="{{ $qrTable->qr_token }}">
+                                <input type="hidden" name="branch_id" value="{{ $qrTable->branch_id }}">
+                                <div class="col-12"><div class="alert alert-info py-2 mb-0">Ordering for table <strong>{{ $qrTable->name }}</strong> at {{ $qrTable->branch->name }}.</div></div>
+                            @elseif($branches->count() > 1)
                                 <div class="col-12">
                                     <label class="form-label" for="orderBranch">Branch <span class="text-danger" aria-hidden="true">*</span></label>
                                     <select class="form-select form-select-sm" id="orderBranch" name="branch_id" required>

@@ -17,12 +17,17 @@ class ChatbotController extends Controller
         $user = auth()->user();
         abort_unless($user && $user->restaurant_id, 403);
         abort_unless($user->can('chatbot.view') || $user->can('chatbot.manage') || $user->can('admin'), 403);
-        $conversations = ChatConversation::query()
-            ->where('restaurant_id', $user->restaurant_id)
+        $tenantConversations = ChatConversation::query()->where('restaurant_id', $user->restaurant_id)
+            ->orWhere(function ($query) use ($user): void {
+                // Legacy conversations created before tenant ownership was added
+                // can still be safely attributed through their tenant customer.
+                $query->whereNull('restaurant_id')->whereHas('customer', fn ($customers) => $customers->where('restaurant_id', $user->restaurant_id));
+            });
+        $conversations = (clone $tenantConversations)
             ->with(['customer:id,name,phone', 'assignee:id,name'])
             ->latest('last_activity_at')->latest('id')->paginate(25)->withQueryString();
 
-        $scoped = ChatConversation::query()->where('restaurant_id', $user->restaurant_id);
+        $scoped = clone $tenantConversations;
         $averageRating = (clone $scoped)->whereNotNull('rating')->avg('rating');
         $pageStats = [
             ['label' => 'Conversations', 'value' => number_format((clone $scoped)->count()), 'icon' => 'fas fa-comments', 'tone' => 'brand'],
@@ -40,7 +45,12 @@ class ChatbotController extends Controller
         abort_unless($user && $user->restaurant_id, 403);
         abort_unless($user->can('chatbot.view') || $user->can('chatbot.manage') || $user->can('admin'), 403);
         $record = ChatConversation::query()
-            ->where('restaurant_id', $user->restaurant_id)
+            ->where(function ($query) use ($user): void {
+                $query->where('restaurant_id', $user->restaurant_id)
+                    ->orWhere(function ($legacy) use ($user): void {
+                        $legacy->whereNull('restaurant_id')->whereHas('customer', fn ($customers) => $customers->where('restaurant_id', $user->restaurant_id));
+                    });
+            })
             ->with(['customer:id,name,phone', 'assignee:id,name'])
             ->findOrFail($conversation);
         $messages = $record->messages()->with('user:id,name')->orderBy('id')->paginate(50);

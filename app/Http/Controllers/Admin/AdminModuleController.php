@@ -728,8 +728,8 @@ class AdminModuleController extends Controller
             'finance.expenses' => $this->module('Expenses', 'Finance', 'fas fa-wallet', 'Record and categorise restaurant operating expenses.', ['expenses' => 'Expenses'], true),
             'finance.receivables' => $this->module('Receivables', 'Finance', 'fas fa-hand-holding-dollar', 'Review money owed to the restaurant.', ['orders' => 'Orders']),
             'finance.cash-register' => $this->module('Cash Register', 'Finance', 'fas fa-cash-register', 'Manage till sessions, opening balances and cash movements.', ['cash_register_sessions' => 'Register Sessions'], true),
-            'finance.accounts' => $this->module('Accounts', 'Finance', 'fas fa-building-columns', 'Manage chart of accounts and restaurant financial accounts.', ['accounts' => 'Accounts'], true),
-            'finance.general-ledger' => $this->module('General Ledger', 'Finance', 'fas fa-book', 'Review accounting journal and ledger activity.', ['journal_entries' => 'Journal Entries']),
+            'finance.accounts' => $this->module('Accounts', 'Finance', 'fas fa-building-columns', 'Chart of accounts for restaurant financial accounts.', ['accounts' => 'Accounts'], false, null, [], ['code', 'name', 'type', 'is_active']),
+            'finance.general-ledger' => $this->module('General Ledger', 'Finance', 'fas fa-book', 'Review accounting journal and ledger activity.', ['journal_entries' => 'Journal Entries'], false, null, [], ['entry_date', 'reference', 'description', 'debit', 'credit']),
             'finance.reconciliation' => $this->module('Reconciliation', 'Finance', 'fas fa-scale-balanced', 'Reconcile payments, bank movements and cash balances.', ['payments' => 'Payments']),
 
             // Employees
@@ -741,7 +741,7 @@ class AdminModuleController extends Controller
 
             // Direct modules - read-only/system-driven
             'reports.index' => $this->module('Reports', 'Reports', 'fas fa-chart-column', 'Access sales, stock, purchasing, finance and management reports.', []),
-            'notifications.index' => $this->module('Notifications', 'Notifications', 'fas fa-bell', 'Review system alerts and staff notifications.', ['notifications' => 'Notifications']),
+            'notifications.index' => $this->module('Notifications', 'Notifications', 'fas fa-bell', 'Review system and order activity alerts.', ['activity_logs' => 'Notifications']),
             'chatbot.index' => $this->module('Chatbot', 'Chatbot', 'fas fa-robot', 'Manage chatbot conversations and AI support.', ['chat_conversations' => 'Conversations', 'chat_messages' => 'Messages']),
 
             // Settings - settings pages should not show a generic Add button

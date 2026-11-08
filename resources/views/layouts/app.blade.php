@@ -598,7 +598,7 @@
 
                 <a href="{{ url('/admin/staff') }}">
                     <i class="fas fa-users-gear"></i>
-                    Staff
+                    Manage Users
                 </a>
 
                 <a href="{{ url('/admin/roles') }}">

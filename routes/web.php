@@ -214,6 +214,8 @@ Route::middleware('auth')
         Route::put('/floors/{floor}', [TableController::class, 'updateFloor'])->whereNumber('floor')->name('floors.update');
         Route::delete('/floors/{floor}', [TableController::class, 'destroyFloor'])->whereNumber('floor')->name('floors.destroy');
         Route::get('/tables', [TableController::class, 'tables'])->name('tables.index');
+        Route::get('/qr-ordering', [TableController::class, 'qrOrdering'])->name('qr-ordering.index');
+        Route::post('/tables/{table}/qr-ordering', [TableController::class, 'createQr'])->whereNumber('table')->name('qr-ordering.create');
         Route::post('/tables', [TableController::class, 'storeTable'])->name('tables.store');
         Route::put('/tables/{table}', [TableController::class, 'updateTable'])->whereNumber('table')->name('tables.update');
         Route::patch('/tables/{table}/status', [TableController::class, 'updateTableStatus'])->whereNumber('table')->name('tables.status');
@@ -469,6 +471,8 @@ Route::middleware('auth')
             '/reports/sales.csv',
             [ReportController::class, 'salesCsv']
         )->name('reports.sales.csv');
+
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
 
 
         Route::get(

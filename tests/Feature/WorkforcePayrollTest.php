@@ -75,6 +75,9 @@ class WorkforcePayrollTest extends TestCase
         $shiftDay = $month->copy()->addDays(3)->setTime(9, 0);
         Attendance::create(['branch_id' => $branch->id, 'user_id' => $waiter->id, 'clock_in_at' => $shiftDay, 'clock_out_at' => $shiftDay->copy()->addHours(5)]);
         Attendance::create(['branch_id' => $branch->id, 'user_id' => $waiter->id, 'clock_in_at' => $shiftDay->copy()->addDay(), 'clock_out_at' => $shiftDay->copy()->addDay()->addHours(3)]);
+        // A shift crossing the month boundary contributes only its in-period hours.
+        $monthEndShift = $month->copy()->endOfMonth()->setTime(22, 0);
+        Attendance::create(['branch_id' => $branch->id, 'user_id' => $waiter->id, 'clock_in_at' => $monthEndShift, 'clock_out_at' => $monthEndShift->copy()->addHours(4)]);
         // Hours outside the month are not paid in this run.
         Attendance::create(['branch_id' => $branch->id, 'user_id' => $waiter->id, 'clock_in_at' => $month->copy()->addMonth()->addDay()->setTime(9, 0), 'clock_out_at' => $month->copy()->addMonth()->addDay()->setTime(17, 0)]);
 
@@ -87,15 +90,15 @@ class WorkforcePayrollTest extends TestCase
 
         $waiterLine = $run->lines()->where('user_id', $waiter->id)->firstOrFail();
         $chefLine = $run->lines()->where('user_id', $chef->id)->firstOrFail();
-        // Waiter: 8h x 20 = 160 gross, 10% pension = 16, net 144. Chef: 1000 - 100 = 900.
-        $this->assertSame(['8.00', '160.00', '16.00', '144.00'], [$waiterLine->hours, $waiterLine->gross_pay, $waiterLine->deductions, $waiterLine->net_pay]);
+        // Waiter: 8h + 2 in-period hours = 10h x 20. Chef gets their full monthly salary.
+        $this->assertSame(['10.00', '200.00', '20.00', '180.00'], [$waiterLine->hours, $waiterLine->gross_pay, $waiterLine->deductions, $waiterLine->net_pay]);
         $this->assertSame('900.00', $chefLine->net_pay);
 
         $this->post(route('admin.payroll.adjustments.store', [$run->id, $waiterLine->id]), ['type' => 'allowance', 'label' => 'Overtime', 'amount' => 40])->assertSessionHasNoErrors();
         $this->post(route('admin.payroll.adjustments.store', [$run->id, $chefLine->id]), ['type' => 'deduction', 'label' => 'Advance', 'amount' => 5000])->assertSessionHasErrors('amount');
         $run->refresh();
-        $this->assertSame(['1200.00', '1080.00'], [$run->gross_total, $run->net_total]);
-        $this->assertSame('20.00', $waiterLine->fresh()->deductions);
+        $this->assertSame(['1240.00', '1116.00'], [$run->gross_total, $run->net_total]);
+        $this->assertSame('24.00', $waiterLine->fresh()->deductions);
 
         $this->post(route('admin.payroll.approve', $run->id))->assertForbidden();
         $this->actingAs($approver)->post(route('admin.payroll.approve', $run->id))->assertSessionHasNoErrors();
@@ -109,8 +112,8 @@ class WorkforcePayrollTest extends TestCase
         $this->post(route('admin.payroll.pay', $run->id), ['payment_reference' => 'BANK-BATCH-7', 'payment_method' => 'bank'])->assertSessionHasNoErrors();
         $run->refresh();
         $this->assertSame('paid', $run->status);
-        $this->assertDatabaseHas('expenses', ['id' => $run->expense_id, 'branch_id' => $branch->id, 'amount' => '1200.00', 'reference' => $run->reference]);
+        $this->assertDatabaseHas('expenses', ['id' => $run->expense_id, 'branch_id' => $branch->id, 'amount' => '1240.00', 'reference' => $run->reference]);
         $this->assertDatabaseHas('expense_categories', ['restaurant_id' => $restaurant->id, 'name' => 'Payroll']);
-        $this->get(route('admin.payroll.payslip', [$run->id, $waiterLine->id]))->assertOk()->assertSee('Overtime')->assertSee('Pension')->assertSee('180.00');
+        $this->get(route('admin.payroll.payslip', [$run->id, $waiterLine->id]))->assertOk()->assertSee('Overtime')->assertSee('Pension')->assertSee('216.00');
     }
 }

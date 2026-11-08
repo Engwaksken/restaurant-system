@@ -37,6 +37,9 @@ class PayrollService
             $hours = $compensation->pay_type === 'hourly'
                 ? $this->clockedHours($compensation->user_id, $run->period_start, $run->period_end)
                 : 0.0;
+            // A monthly rate is the complete salary for this monthly run; it is
+            // not prorated against attendance. Hourly staff earn only completed
+            // attendance time that overlaps this run's calendar month.
             $base = $compensation->pay_type === 'hourly'
                 ? round($hours * (float) $compensation->rate, 2)
                 : round((float) $compensation->rate, 2);
@@ -98,13 +101,21 @@ class PayrollService
 
     private function clockedHours(int $userId, Carbon $start, Carbon $end): float
     {
+        $periodStart = $start->copy()->startOfDay();
+        $periodEnd = $end->copy()->endOfDay();
+
         return round(Attendance::query()
             ->where('user_id', $userId)
             ->whereNotNull('clock_out_at')
-            ->where('clock_in_at', '>=', $start->copy()->startOfDay())
-            ->where('clock_in_at', '<=', $end->copy()->endOfDay())
+            ->where('clock_in_at', '<=', $periodEnd)
+            ->where('clock_out_at', '>=', $periodStart)
             ->get()
-            ->sum(fn (Attendance $attendance) => $attendance->hours()), 2);
+            ->sum(function (Attendance $attendance) use ($periodStart, $periodEnd): float {
+                $from = $attendance->clock_in_at->greaterThan($periodStart) ? $attendance->clock_in_at : $periodStart;
+                $to = $attendance->clock_out_at->lessThan($periodEnd) ? $attendance->clock_out_at : $periodEnd;
+
+                return max(0, $from->diffInMinutes($to, false) / 60);
+            }), 2);
     }
 
     /** Replace configured statutory deductions, computed on gross pay. */

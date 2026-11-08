@@ -77,14 +77,16 @@
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-xl-8">
-        <div class="panel p-4 h-100">
+<div class="panel p-3 p-lg-4 mb-4">
+    <ul class="nav nav-tabs mb-4" id="dashboardActivityTabs" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-pane" type="button" role="tab" aria-controls="sales-pane" aria-selected="true">Sales — last 7 days</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="sellers-tab" data-bs-toggle="tab" data-bs-target="#sellers-pane" type="button" role="tab" aria-controls="sellers-pane" aria-selected="false">Top sellers</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-pane" type="button" role="tab" aria-controls="orders-pane" aria-selected="false">Recent orders</button></li>
+    </ul>
+    <div class="tab-content" id="dashboardActivityTabsContent">
+        <section class="tab-pane fade show active" id="sales-pane" role="tabpanel" aria-labelledby="sales-tab" tabindex="0">
             <div class="d-flex justify-content-between align-items-start mb-2">
-                <div>
-                    <h5 class="mb-1">Sales — last 7 days</h5>
-                    <p class="text-muted small mb-0">Order value excluding cancelled orders</p>
-                </div>
+                <div><h5 class="mb-1">Sales — last 7 days</h5><p class="text-muted small mb-0">Order value excluding cancelled orders</p></div>
                 <span class="badge bg-primary">{{ $currency }} {{ number_format($trend->sum('total')) }}</span>
             </div>
             <div class="bar-chart" role="img" aria-label="Sales for the last seven days">
@@ -96,8 +98,35 @@
                     </div>
                 @endforeach
             </div>
-        </div>
+        </section>
+        <section class="tab-pane fade" id="sellers-pane" role="tabpanel" aria-labelledby="sellers-tab" tabindex="0">
+            <div class="d-flex justify-content-between align-items-start mb-2"><div><h5 class="mb-1">Top sellers</h5><p class="text-muted small mb-2">Last 30 days by quantity</p></div></div>
+            @forelse($topItems as $index => $item)
+                <div class="list-row">
+                    <div class="d-flex align-items-center gap-3 min-w-0"><span class="stat-icon tone-brand" style="width:34px;height:34px;flex-basis:34px;font-size:13px;font-weight:800">{{ $index + 1 }}</span><div class="text-truncate"><div class="fw-semibold text-truncate">{{ $item->item_name }}</div><small class="text-muted">{{ number_format((float) $item->quantity) }} sold</small></div></div>
+                    <span class="fw-semibold small text-nowrap">{{ $currency }} {{ number_format((float) $item->revenue) }}</span>
+                </div>
+            @empty
+                <x-admin.empty icon="fas fa-fire" title="No sales yet" message="Best-selling dishes will show here." />
+            @endforelse
+        </section>
+        <section class="tab-pane fade" id="orders-pane" role="tabpanel" aria-labelledby="orders-tab" tabindex="0">
+            <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Recent orders</h5><a href="{{ route('admin.orders.index') }}" class="btn btn-sm btn-outline-secondary">View all</a></div>
+            @if($recentOrders->isEmpty())
+                <x-admin.empty icon="fas fa-receipt" title="No orders yet" message="New orders from the POS and website will appear here." />
+            @else
+                <div class="table-responsive"><table class="table align-middle mb-0">
+                    <thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Status</th><th class="text-end">Total</th></tr></thead>
+                    <tbody>@foreach($recentOrders as $order)
+                        <tr><td><a class="fw-semibold" href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a><small class="d-block text-muted">{{ $order->ordered_at?->diffForHumans() }}</small></td><td>{{ $order->customer?->name ?? 'Walk-in' }}</td><td>{{ \Illuminate\Support\Str::headline($order->order_type) }}</td><td><span class="badge bg-{{ $statusTone[$order->status] ?? 'secondary' }}">{{ ucfirst($order->status) }}</span></td><td class="text-end fw-semibold">{{ $currency }} {{ number_format((float) $order->total) }}</td></tr>
+                    @endforeach</tbody>
+                </table></div>
+            @endif
+        </section>
     </div>
+</div>
+
+<div class="row g-4">
 
     <div class="col-xl-4">
         <div class="panel p-4 h-100">
@@ -115,56 +144,6 @@
                     </div>
                 </div>
             @endforeach
-        </div>
-    </div>
-
-    <div class="col-xl-8">
-        <div class="panel p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Recent orders</h5>
-                <a href="{{ route('admin.orders.index') }}" class="btn btn-sm btn-outline-secondary">View all</a>
-            </div>
-            @if($recentOrders->isEmpty())
-                <x-admin.empty icon="fas fa-receipt" title="No orders yet" message="New orders from the POS and website will appear here." />
-            @else
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Status</th><th class="text-end">Total</th></tr></thead>
-                        <tbody>
-                        @foreach($recentOrders as $order)
-                            <tr>
-                                <td><a class="fw-semibold" href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a><small class="d-block text-muted">{{ $order->ordered_at?->diffForHumans() }}</small></td>
-                                <td>{{ $order->customer?->name ?? 'Walk-in' }}</td>
-                                <td>{{ \Illuminate\Support\Str::headline($order->order_type) }}</td>
-                                <td><span class="badge bg-{{ $statusTone[$order->status] ?? 'secondary' }}">{{ ucfirst($order->status) }}</span></td>
-                                <td class="text-end fw-semibold">{{ $currency }} {{ number_format((float) $order->total) }}</td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </div>
-    </div>
-
-    <div class="col-xl-4">
-        <div class="panel p-4 h-100">
-            <h5 class="mb-1">Top sellers</h5>
-            <p class="text-muted small mb-2">Last 30 days by quantity</p>
-            @forelse($topItems as $index => $item)
-                <div class="list-row">
-                    <div class="d-flex align-items-center gap-3 min-w-0">
-                        <span class="stat-icon tone-brand" style="width:34px;height:34px;flex-basis:34px;font-size:13px;font-weight:800">{{ $index + 1 }}</span>
-                        <div class="text-truncate">
-                            <div class="fw-semibold text-truncate">{{ $item->item_name }}</div>
-                            <small class="text-muted">{{ number_format((float) $item->quantity) }} sold</small>
-                        </div>
-                    </div>
-                    <span class="fw-semibold small text-nowrap">{{ $currency }} {{ number_format((float) $item->revenue) }}</span>
-                </div>
-            @empty
-                <x-admin.empty icon="fas fa-fire" title="No sales yet" message="Best-selling dishes will show here." />
-            @endforelse
         </div>
     </div>
 

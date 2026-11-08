@@ -26,7 +26,7 @@
 
         <div class="d-none d-lg-block">
             <h1 class="mb-3">Run every shift<br>from one place.</h1>
-            <p class="text-white-50 mb-4" style="max-width: 420px">Orders, kitchen, tables, stock, staff and finances for {{ $brand->name() }} — all in one dashboard.</p>
+            <p class="text-white-50 mb-4" style="max-width: 420px">Orders, kitchen, tables, stock, staff and finances for {{ $brand->name() }}, all in one dashboard.</p>
             <div class="d-flex flex-wrap gap-2">
                 @foreach(['fa-cash-register' => 'Point of sale', 'fa-fire-burner' => 'Kitchen display', 'fa-boxes-stacked' => 'Inventory', 'fa-chart-line' => 'Reports'] as $icon => $label)
                     <span class="hero-badge" style="padding: 6px 14px"><i class="fas {{ $icon }} text-brand"></i>{{ $label }}</span>

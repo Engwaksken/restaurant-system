@@ -223,7 +223,7 @@
         const tax = TAX_INCLUSIVE ? taxable - taxable / (1 + TAX_RATE / 100) : taxable * TAX_RATE / 100;
         const delivery = document.getElementById('posType').value === 'delivery' ? DELIVERY_FEE : 0;
         document.getElementById('sumSubtotal').textContent = money(subtotal);
-        document.getElementById('sumDiscount').textContent = discounts > 0 ? '− ' + money(discounts) : '0.00';
+        document.getElementById('sumDiscount').textContent = discounts > 0 ? '- ' + money(discounts) : '0.00';
         document.getElementById('sumTax').textContent = money(tax);
         document.getElementById('sumDelivery').textContent = money(delivery);
         document.getElementById('sumTotal').textContent = money(taxable + (TAX_INCLUSIVE ? 0 : tax) + delivery);
@@ -250,7 +250,7 @@
         pending = Number(id);
         document.getElementById('optionsTitle').textContent = item.name;
         const variants = document.getElementById('variantChoices'); variants.replaceChildren();
-        item.variants.forEach((v, i) => variants.append(choice('radio', 'variant', v.id, v.name + ' — ' + money(v.price), i === 0)));
+        item.variants.forEach((v, i) => variants.append(choice('radio', 'variant', v.id, v.name + ' - ' + money(v.price), i === 0)));
         document.getElementById('variantField').hidden = !item.variants.length;
         const addons = document.getElementById('addonChoices'); addons.replaceChildren();
         item.addons.forEach((a) => addons.append(choice('checkbox', 'addon', a.id, a.name + ' (+' + money(a.price) + ')', false)));

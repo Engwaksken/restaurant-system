@@ -60,7 +60,7 @@
             <tr>
                 <td><strong>{{ $line->employee_name }}</strong>
                     @foreach($line->adjustments as $adjustment)
-                        <small class="d-block {{ $adjustment->type === 'deduction' ? 'text-danger' : 'text-success' }}">{{ $adjustment->type === 'deduction' ? '−' : '+' }} {{ $adjustment->label }}: {{ $money($adjustment->amount) }}
+                    <small class="d-block {{ $adjustment->type === 'deduction' ? 'text-danger' : 'text-success' }}">{{ $adjustment->type === 'deduction' ? '-' : '+' }} {{ $adjustment->label }}: {{ $money($adjustment->amount) }}
                             @if($draft && $canManage && !$adjustment->is_statutory)
                                 <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 ms-1" data-bs-toggle="modal" data-bs-target="#delete-adjustment-{{ $adjustment->id }}" title="Remove {{ $adjustment->label }}" aria-label="Remove {{ $adjustment->label }}"><i class="fas fa-trash"></i></button>
                             @endif

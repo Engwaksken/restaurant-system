@@ -79,7 +79,7 @@
 
 <div class="panel p-3 p-lg-4 mb-4">
     <ul class="nav nav-tabs mb-4" id="dashboardActivityTabs" role="tablist">
-        <li class="nav-item" role="presentation"><button class="nav-link active" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-pane" type="button" role="tab" aria-controls="sales-pane" aria-selected="true">Sales — last 7 days</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link active" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-pane" type="button" role="tab" aria-controls="sales-pane" aria-selected="true">Sales - last 7 days</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="sellers-tab" data-bs-toggle="tab" data-bs-target="#sellers-pane" type="button" role="tab" aria-controls="sellers-pane" aria-selected="false">Top sellers</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-pane" type="button" role="tab" aria-controls="orders-pane" aria-selected="false">Recent orders</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="mix-tab" data-bs-toggle="tab" data-bs-target="#mix-pane" type="button" role="tab" aria-controls="mix-pane" aria-selected="false">Order mix</button></li>
@@ -87,7 +87,7 @@
     <div class="tab-content" id="dashboardActivityTabsContent">
         <section class="tab-pane fade show active" id="sales-pane" role="tabpanel" aria-labelledby="sales-tab" tabindex="0">
             <div class="d-flex justify-content-between align-items-start mb-2">
-                <div><h5 class="mb-1">Sales — last 7 days</h5><p class="text-muted small mb-0">Order value excluding cancelled orders</p></div>
+                <div><h5 class="mb-1">Sales - last 7 days</h5><p class="text-muted small mb-0">Order value excluding cancelled orders</p></div>
                 <span class="badge bg-primary">{{ $currency }} {{ number_format($trend->sum('total')) }}</span>
             </div>
             <div class="bar-chart" role="img" aria-label="Sales for the last seven days">

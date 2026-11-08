@@ -606,7 +606,7 @@ class AdminModuleController extends Controller
 
         foreach ($tables as $table => $label) {
             if (!Schema::hasTable($table)) {
-                $stats[] = ['label' => $label, 'value' => '—', 'available' => false];
+                $stats[] = ['label' => $label, 'value' => '-', 'available' => false];
                 continue;
             }
 
@@ -618,7 +618,7 @@ class AdminModuleController extends Controller
                 ];
             } catch (Throwable $e) {
                 report($e);
-                $stats[] = ['label' => $label, 'value' => '—', 'available' => false];
+                $stats[] = ['label' => $label, 'value' => '-', 'available' => false];
             }
         }
 

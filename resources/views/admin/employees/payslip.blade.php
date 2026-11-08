@@ -27,7 +27,7 @@
         </div>
         <div class="text-end">
             <h2 class="h5 mb-0">Payslip</h2>
-            <span class="text-muted">{{ $run->period_start->format('j M') }} – {{ $run->period_end->format('j M Y') }}</span>
+            <span class="text-muted">{{ $run->period_start->format('j M') }} - {{ $run->period_end->format('j M Y') }}</span>
             <small class="d-block text-muted">{{ $run->reference }} · {{ ucfirst($run->status) }}</small>
         </div>
     </div>
@@ -37,7 +37,7 @@
             <tr><td>{{ $line->pay_type === 'hourly' ? 'Hours worked: ' . number_format((float) $line->hours, 2) . ' × ' . $money($line->rate) : 'Monthly salary' }}</td><td class="text-end">{{ $money($line->base_pay) }}</td></tr>
             @foreach($line->adjustments->where('type', 'allowance') as $adjustment)<tr><td>{{ $adjustment->label }}</td><td class="text-end">{{ $money($adjustment->amount) }}</td></tr>@endforeach
             <tr class="fw-bold"><td>Gross pay</td><td class="text-end">{{ $money($line->gross_pay) }}</td></tr>
-            @foreach($line->adjustments->where('type', 'deduction') as $adjustment)<tr><td>{{ $adjustment->label }}</td><td class="text-end">− {{ $money($adjustment->amount) }}</td></tr>@endforeach
+            @foreach($line->adjustments->where('type', 'deduction') as $adjustment)<tr><td>{{ $adjustment->label }}</td><td class="text-end">- {{ $money($adjustment->amount) }}</td></tr>@endforeach
             <tr class="fw-bold fs-5"><td>Net pay</td><td class="text-end">{{ $money($line->net_pay) }}</td></tr>
         </tbody>
     </table>

@@ -75,7 +75,7 @@
                         <td>{{ $payment->receipt_number }}<small class="d-block text-muted">{{ $payment->paid_at?->format('Y-m-d H:i') }}@if($payment->receiver) · {{ $payment->receiver->name }}@endif</small></td>
                         <td>{{ $paymentMethods[$payment->payment_method] ?? \Illuminate\Support\Str::headline($payment->payment_method) }}@if($payment->transaction_reference)<small class="d-block text-muted">{{ $payment->transaction_reference }}</small>@endif</td>
                         <td class="text-end">{{ $money($payment->amount) }}</td>
-                        <td class="text-end">{{ $refunded > 0 ? $money($refunded) : '—' }}</td>
+                        <td class="text-end">{{ $refunded > 0 ? $money($refunded) : '-' }}</td>
                         <td>{{ ucfirst($payment->status) }}</td>
                         @if($canRefund)
                         <td>
@@ -118,13 +118,13 @@
             <h2 class="h5">Summary</h2>
             <dl class="row mb-0">
                 <dt class="col-7 fw-normal">Subtotal</dt><dd class="col-5 text-end">{{ $money($order->subtotal) }}</dd>
-                @if((float) $order->discount > 0)<dt class="col-7 fw-normal">Discount</dt><dd class="col-5 text-end">− {{ $money($order->discount) }}</dd>@endif
-                @if((float) $order->loyalty_discount > 0)<dt class="col-7 fw-normal">Points ({{ $order->loyalty_points_redeemed }})</dt><dd class="col-5 text-end">− {{ $money($order->loyalty_discount) }}</dd>@endif
+            @if((float) $order->discount > 0)<dt class="col-7 fw-normal">Discount</dt><dd class="col-5 text-end">- {{ $money($order->discount) }}</dd>@endif
+            @if((float) $order->loyalty_discount > 0)<dt class="col-7 fw-normal">Points ({{ $order->loyalty_points_redeemed }})</dt><dd class="col-5 text-end">- {{ $money($order->loyalty_discount) }}</dd>@endif
                 <dt class="col-7 fw-normal">Tax</dt><dd class="col-5 text-end">{{ $money($order->tax) }}</dd>
                 @if((float) $order->delivery_fee > 0)<dt class="col-7 fw-normal">Delivery</dt><dd class="col-5 text-end">{{ $money($order->delivery_fee) }}</dd>@endif
                 <dt class="col-7 border-top pt-2">Total</dt><dd class="col-5 text-end border-top pt-2 fw-bold">{{ $currency }} {{ $money($order->total) }}</dd>
                 <dt class="col-7 fw-normal">Paid</dt><dd class="col-5 text-end">{{ $money($order->paid_amount) }}</dd>
-                @if((float) $order->refunded_amount > 0)<dt class="col-7 fw-normal">Refunded</dt><dd class="col-5 text-end text-danger">− {{ $money($order->refunded_amount) }}</dd>@endif
+            @if((float) $order->refunded_amount > 0)<dt class="col-7 fw-normal">Refunded</dt><dd class="col-5 text-end text-danger">- {{ $money($order->refunded_amount) }}</dd>@endif
                 <dt class="col-7">Balance due</dt><dd class="col-5 text-end fw-bold {{ (float) $order->balance > 0 ? 'text-danger' : '' }}">{{ $money($order->balance) }}</dd>
             </dl>
         </div>

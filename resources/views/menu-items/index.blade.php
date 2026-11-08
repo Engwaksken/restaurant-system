@@ -213,7 +213,7 @@
                                     {{ config('restaurant.currency', 'UGX') }}
                                     {{ number_format((float) $item->cost_price) }}
                                 @else
-                                    <span class="text-muted">—</span>
+                                    <span class="text-muted">-</span>
                                 @endif
                             </td>
 

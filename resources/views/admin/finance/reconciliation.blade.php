@@ -11,7 +11,7 @@
     $currency = config('restaurant.currency');
 @endphp
 <x-admin.stats :items="[
-    ['label' => 'Non-cash received', 'value' => $currency . ' ' . $money($summary->sum('total')), 'icon' => 'fas fa-money-bill-transfer', 'tone' => 'brand', 'hint' => number_format($summary->sum('payments')) . ' payments · ' . $from->format('j M') . ' – ' . $to->format('j M')],
+    ['label' => 'Non-cash received', 'value' => $currency . ' ' . $money($summary->sum('total')), 'icon' => 'fas fa-money-bill-transfer', 'tone' => 'brand', 'hint' => number_format($summary->sum('payments')) . ' payments · ' . $from->format('j M') . ' - ' . $to->format('j M')],
     ['label' => 'Matched', 'value' => $currency . ' ' . $money($summary->sum('matched')), 'icon' => 'fas fa-circle-check', 'tone' => 'success'],
     ['label' => 'Unreconciled', 'value' => $currency . ' ' . $money($summary->sum('unreconciled')), 'icon' => 'fas fa-hourglass-half', 'tone' => 'warning'],
     ['label' => 'Disputed', 'value' => $currency . ' ' . $money($summary->sum('disputed')), 'icon' => 'fas fa-triangle-exclamation', 'tone' => 'danger'],
@@ -30,7 +30,7 @@
 </div>
 
 <div class="panel p-4 mb-4">
-    <h2 class="h5">Summary · {{ $from->format('j M') }} – {{ $to->format('j M Y') }}</h2>
+    <h2 class="h5">Summary · {{ $from->format('j M') }} - {{ $to->format('j M Y') }}</h2>
     <div class="table-responsive"><table class="table table-sm">
         <thead><tr><th>Method</th><th class="text-end">Payments</th><th class="text-end">Total</th><th class="text-end">Matched</th><th class="text-end">Unreconciled</th><th class="text-end">Disputed</th></tr></thead>
         <tbody>

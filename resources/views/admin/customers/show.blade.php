@@ -24,10 +24,10 @@
             @endif
         </div>
         <dl class="mb-0">
-            <dt>Phone</dt><dd>{{ $customer->phone ?? '—' }}</dd>
-            <dt>Email</dt><dd>{{ $customer->email ?? '—' }}</dd>
-            <dt>Address</dt><dd>{{ $customer->address ?? '—' }}</dd>
-            <dt>Notes</dt><dd>{{ $customer->notes ?? '—' }}</dd>
+            <dt>Phone</dt><dd>{{ $customer->phone ?? '-' }}</dd>
+            <dt>Email</dt><dd>{{ $customer->email ?? '-' }}</dd>
+            <dt>Address</dt><dd>{{ $customer->address ?? '-' }}</dd>
+            <dt>Notes</dt><dd>{{ $customer->notes ?? '-' }}</dd>
         </dl>
         <p class="small text-muted mt-3 mb-0">Customer since {{ $customer->created_at?->format('j M Y') }}</p>
         @if($canErase)

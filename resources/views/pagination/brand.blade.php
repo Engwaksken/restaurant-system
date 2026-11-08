@@ -2,7 +2,7 @@
 @if($paginator->total() > 0)
     <div class="pager-bar">
         <span class="pager-summary">
-            Showing <strong>{{ number_format($paginator->firstItem()) }}</strong>–<strong>{{ number_format($paginator->lastItem()) }}</strong>
+            Showing <strong>{{ number_format($paginator->firstItem()) }}</strong>-<strong>{{ number_format($paginator->lastItem()) }}</strong>
             of <strong>{{ number_format($paginator->total()) }}</strong>
         </span>
 

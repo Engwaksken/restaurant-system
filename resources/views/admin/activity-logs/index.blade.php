@@ -8,7 +8,7 @@
 @php
     $formatValue = function ($value): string {
         if (is_bool($value)) { return $value ? 'yes' : 'no'; }
-        if ($value === null) { return '—'; }
+        if ($value === null) { return '-'; }
         if (is_scalar($value)) { return \Illuminate\Support\Str::limit((string) $value, 120); }
         return \Illuminate\Support\Str::limit(json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '', 120);
     };
@@ -36,7 +36,7 @@
                 <td class="text-nowrap">{{ $log->created_at?->format('Y-m-d H:i:s') }}</td>
                 <td>{{ $log->user?->name ?? ($log->user_id ? 'Deleted user #' . $log->user_id : 'System / customer') }}</td>
                 <td><code>{{ $log->action }}</code></td>
-                <td>@if($log->subject_type){{ \Illuminate\Support\Str::headline(class_basename($log->subject_type)) }} #{{ $log->subject_id }}@else — @endif</td>
+                <td>@if($log->subject_type){{ \Illuminate\Support\Str::headline(class_basename($log->subject_type)) }} #{{ $log->subject_id }}@else - @endif</td>
                 <td class="small">
                     @foreach((array) $log->properties as $key => $value)
                         <span class="d-block"><span class="text-muted">{{ \Illuminate\Support\Str::headline((string) $key) }}:</span> {{ $formatValue($value) }}</span>

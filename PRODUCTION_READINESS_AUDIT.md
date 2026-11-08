@@ -1,4 +1,4 @@
-# Production Readiness Audit — Remediation Status
+# Production Readiness Audit - Remediation Status
 
 ## Scope and status
 

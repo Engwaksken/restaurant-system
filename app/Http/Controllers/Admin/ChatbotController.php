@@ -33,7 +33,7 @@ class ChatbotController extends Controller
             ['label' => 'Conversations', 'value' => number_format((clone $scoped)->count()), 'icon' => 'fas fa-comments', 'tone' => 'brand'],
             ['label' => 'Active today', 'value' => number_format((clone $scoped)->where('last_activity_at', '>=', now()->startOfDay())->count()), 'icon' => 'fas fa-signal', 'tone' => 'success'],
             ['label' => 'Waiting for staff', 'value' => number_format((clone $scoped)->where('status', 'waiting')->count()), 'icon' => 'fas fa-hourglass-half', 'tone' => 'warning'],
-            ['label' => 'Average rating', 'value' => $averageRating ? number_format((float) $averageRating, 1) . ' / 5' : '—', 'icon' => 'fas fa-star', 'tone' => 'info'],
+            ['label' => 'Average rating', 'value' => $averageRating ? number_format((float) $averageRating, 1) . ' / 5' : '-', 'icon' => 'fas fa-star', 'tone' => 'info'],
         ];
 
         return view('admin.chatbot.index', compact('conversations', 'pageStats'));

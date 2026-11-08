@@ -1,6 +1,6 @@
 /* =========================================================
-   RESTAURANT PUBLIC SITE — DESIGN SYSTEM
-   Brand variables (--brand, --brand-accent …) are injected
+   RESTAURANT PUBLIC SITE - DESIGN SYSTEM
+   Brand variables (--brand, --brand-accent, etc.) are injected
    per restaurant by resources/views/public/partials/head.
 ========================================================= */
 :root {

@@ -1,7 +1,7 @@
 /* =========================================================
-   RESTAURANT ADMIN — DESIGN SYSTEM
+   RESTAURANT ADMIN - DESIGN SYSTEM
    Brand colours arrive as CSS variables from the layout
-   (--brand, --brand-rgb, --brand-accent …) and default here.
+   (--brand, --brand-rgb, --brand-accent, etc.) and default here.
 ========================================================= */
 :root {
     --brand: #e8590c;

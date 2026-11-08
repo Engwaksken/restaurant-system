@@ -26,7 +26,7 @@
                 <span class="text-muted">{{ $staff->email }} · {{ $staff->branch?->name ?? 'All branches' }}</span>
             </div>
             @if(in_array('admin', $granted, true))
-                <span class="badge text-bg-danger">Wildcard admin — CLI managed</span>
+                <span class="badge text-bg-danger">Wildcard admin, CLI managed</span>
             @else
                 <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit-permissions-{{ $staff->id }}">
                     <i class="fas fa-pen-to-square me-1"></i> Edit permissions

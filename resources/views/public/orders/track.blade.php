@@ -80,7 +80,7 @@
 
             @if($order->feedback)
                 <section class="card order-card p-4">
-                    <p class="mb-0">Thank you — you rated this order {{ $order->feedback->rating }}/5.</p>
+                    <p class="mb-0">Thanks, you rated this order {{ $order->feedback->rating }}/5.</p>
                 </section>
             @elseif(in_array($order->status, \App\Http\Controllers\Public\PublicOrderFeedbackController::RATEABLE_STATUSES, true))
                 <section class="card order-card p-4">

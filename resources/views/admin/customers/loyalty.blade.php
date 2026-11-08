@@ -125,7 +125,7 @@
                     <div class="mb-3">
                         <label class="form-label"
                                for="loyaltyPoints">
-                            Points (+ to add, − to remove) <span class="text-danger" aria-hidden="true">*</span>
+                            Points (+ to add, - to remove) <span class="text-danger" aria-hidden="true">*</span>
                         </label>
 
                         <input class="form-control @error('points') is-invalid @enderror"

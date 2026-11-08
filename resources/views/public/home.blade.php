@@ -265,7 +265,7 @@
                                     <label class="visually-hidden" for="variant-{{ $item->id }}">Choose</label>
                                     <select class="form-select mb-3 item-variant" id="variant-{{ $item->id }}">
                                         @foreach($item->variants as $variant)
-                                            <option value="{{ $variant->id }}" data-name="{{ $variant->name }}" data-price="{{ $variant->price }}">{{ $variant->name }} — {{ $currency }} {{ number_format((float) $variant->price, 2) }}</option>
+                                            <option value="{{ $variant->id }}" data-name="{{ $variant->name }}" data-price="{{ $variant->price }}">{{ $variant->name }} - {{ $currency }} {{ number_format((float) $variant->price, 2) }}</option>
                                         @endforeach
                                     </select>
                                 @endif

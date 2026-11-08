@@ -57,7 +57,7 @@
             @forelse($tables as $table)
                 <tr>
                     <td><strong>{{ $table->name }}</strong><small class="d-block text-muted">{{ $table->branch?->name }}</small></td>
-                    <td>{{ $table->floor?->name ?? '—' }}</td>
+                    <td>{{ $table->floor?->name ?? '-' }}</td>
                     <td>{{ $table->capacity }}</td>
                     <td><span class="badge bg-{{ $statusClasses[$table->status] ?? 'secondary' }}">{{ ucfirst($table->status) }}</span></td>
                     @if($canManage)

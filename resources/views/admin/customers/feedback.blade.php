@@ -6,8 +6,8 @@
 @section('content')
 <x-admin.stats :items="[
     ['label' => 'Responses', 'value' => number_format((int) $summary->responses), 'icon' => 'fas fa-comments', 'tone' => 'info', 'hint' => 'Feedback received from customers'],
-    ['label' => 'Average rating', 'value' => $summary->responses ? number_format((float) $summary->average_rating, 1) . ' / 5' : '—', 'icon' => 'fas fa-star', 'tone' => 'warning', 'hint' => 'Across all responses in scope'],
-    ['label' => 'Low ratings (1–2 stars)', 'value' => number_format((int) $summary->low_ratings), 'icon' => 'fas fa-face-frown', 'tone' => (int) $summary->low_ratings > 0 ? 'danger' : 'success', 'hint' => (int) $summary->low_ratings > 0 ? 'Follow up with these guests' : 'No unhappy guests'],
+    ['label' => 'Average rating', 'value' => $summary->responses ? number_format((float) $summary->average_rating, 1) . ' / 5' : '-', 'icon' => 'fas fa-star', 'tone' => 'warning', 'hint' => 'Across all responses in scope'],
+    ['label' => 'Low ratings (1-2 stars)', 'value' => number_format((int) $summary->low_ratings), 'icon' => 'fas fa-face-frown', 'tone' => (int) $summary->low_ratings > 0 ? 'danger' : 'success', 'hint' => (int) $summary->low_ratings > 0 ? 'Follow up with these guests' : 'No unhappy guests'],
 ]" />
 <div class="panel p-4">
     <form method="GET" class="row g-2 align-items-end mb-3">
@@ -28,9 +28,9 @@
             <tr>
                 <td>{{ $entry->created_at->format('Y-m-d H:i') }}</td>
                 <td class="text-nowrap {{ $entry->rating <= 2 ? 'text-danger' : '' }}" aria-label="{{ $entry->rating }} out of 5">@for($star = 1; $star <= 5; $star++)<i class="{{ $star <= $entry->rating ? 'fas' : 'far' }} fa-star"></i>@endfor</td>
-                <td>{{ $entry->comment ?? '—' }}</td>
+                <td>{{ $entry->comment ?? '-' }}</td>
                 <td>@if($entry->order)<a href="{{ route('admin.orders.show', $entry->order) }}">{{ $entry->order->order_number }}</a>@endif</td>
-                <td>@if($entry->customer)@if($canViewCustomers)<a href="{{ route('admin.customers.show', $entry->customer->id) }}">{{ $entry->customer->name }}</a>@else{{ $entry->customer->name }}@endif @else — @endif</td>
+                <td>@if($entry->customer)@if($canViewCustomers)<a href="{{ route('admin.customers.show', $entry->customer->id) }}">{{ $entry->customer->name }}</a>@else{{ $entry->customer->name }}@endif @else - @endif</td>
                 <td>{{ $entry->branch?->name }}</td>
             </tr>
         @empty

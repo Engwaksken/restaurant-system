@@ -30,7 +30,7 @@
                     <td>{{ $customer->phone }}@if($customer->email)<small class="d-block text-muted">{{ $customer->email }}</small>@endif</td>
                     <td class="text-end">{{ $customer->orders_count }}</td>
                     <td class="text-end">{{ config('restaurant.currency') }} {{ number_format((float) $customer->total_spent, 2) }}</td>
-                    <td>{{ $customer->last_order_at ? \Illuminate\Support\Carbon::parse($customer->last_order_at)->format('Y-m-d') : '—' }}</td>
+                    <td>{{ $customer->last_order_at ? \Illuminate\Support\Carbon::parse($customer->last_order_at)->format('Y-m-d') : '-' }}</td>
                     @if($canManage)
                         <td class="text-end">
                             <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#edit-customer-list-{{ $customer->id }}" title="Edit {{ $customer->name }}" aria-label="Edit {{ $customer->name }}">

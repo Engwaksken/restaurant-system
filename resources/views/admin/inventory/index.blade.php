@@ -114,8 +114,8 @@
                     @forelse($items as $item)
                         <tr>
                             <td class="fw-semibold">{{ $item->name }}</td>
-                            <td>{{ $item->sku ?? '—' }}</td>
-                            <td>@if($item->barcode)<span class="font-monospace small"><i class="fas fa-barcode text-muted me-1"></i>{{ $item->barcode }}</span>@else<span class="text-muted">—</span>@endif</td>
+                            <td>{{ $item->sku ?? '-' }}</td>
+                            <td>@if($item->barcode)<span class="font-monospace small"><i class="fas fa-barcode text-muted me-1"></i>{{ $item->barcode }}</span>@else<span class="text-muted">-</span>@endif</td>
                             <td>{{ $item->usage_unit }}</td>
                             <td class="text-end">{{ config('restaurant.currency') }} {{ number_format((float) $item->unit_cost, 2) }}</td>
                             <td>

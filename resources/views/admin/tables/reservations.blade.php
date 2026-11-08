@@ -60,7 +60,7 @@
                     <td><strong>{{ $reservation->reserved_at->format('H:i') }}</strong><small class="d-block text-muted">{{ $reservation->reservation_number }}</small></td>
                     <td>{{ $reservation->guest_name }}<small class="d-block text-muted">{{ $reservation->phone }}</small>@if($reservation->special_requests)<small class="d-block">{{ $reservation->special_requests }}</small>@endif</td>
                     <td>{{ $reservation->guest_count }}</td>
-                    <td>{{ $reservation->table?->name ?? '—' }}<small class="d-block text-muted">{{ $reservation->branch?->name }}</small></td>
+                    <td>{{ $reservation->table?->name ?? '-' }}<small class="d-block text-muted">{{ $reservation->branch?->name }}</small></td>
                     <td><span class="badge bg-{{ $statusClasses[$reservation->status] ?? 'secondary' }}">{{ \Illuminate\Support\Str::headline($reservation->status) }}</span></td>
                     @if($canManage)
                     <td>

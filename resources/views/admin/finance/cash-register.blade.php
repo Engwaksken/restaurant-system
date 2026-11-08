@@ -32,9 +32,9 @@
             <dl class="row mb-3">
                 <dt class="col-7">Opening float</dt><dd class="col-5 text-end">{{ $money($current->opening_float) }}</dd>
                 <dt class="col-7">Cash payments</dt><dd class="col-5 text-end">{{ $money($cashTaken) }}</dd>
-                <dt class="col-7">Cash refunds</dt><dd class="col-5 text-end">− {{ $money($cashRefunded) }}</dd>
+                    <dt class="col-7">Cash refunds</dt><dd class="col-5 text-end">- {{ $money($cashRefunded) }}</dd>
                 <dt class="col-7">Pay-ins</dt><dd class="col-5 text-end">{{ $money($current->movements->where('type', 'pay_in')->sum('amount')) }}</dd>
-                <dt class="col-7">Pay-outs</dt><dd class="col-5 text-end">− {{ $money($current->movements->where('type', 'pay_out')->sum('amount')) }}</dd>
+                    <dt class="col-7">Pay-outs</dt><dd class="col-5 text-end">- {{ $money($current->movements->where('type', 'pay_out')->sum('amount')) }}</dd>
                 <dt class="col-7 border-top pt-2">Expected in drawer</dt><dd class="col-5 text-end border-top pt-2 fw-bold">{{ $money($expected) }}</dd>
             </dl>
             <div class="d-flex flex-wrap gap-2 mb-3">
@@ -46,7 +46,7 @@
                 </button>
             </div>
             @if($current->movements->isNotEmpty())
-                <ul class="list-unstyled small mb-0">@foreach($current->movements as $movement)<li>{{ $movement->created_at->format('H:i') }} · {{ $movement->type === 'pay_in' ? '+' : '−' }}{{ $money($movement->amount) }} · {{ $movement->reason }}</li>@endforeach</ul>
+                    <ul class="list-unstyled small mb-0">@foreach($current->movements as $movement)<li>{{ $movement->created_at->format('H:i') }} · {{ $movement->type === 'pay_in' ? '+' : '-' }}{{ $money($movement->amount) }} · {{ $movement->reason }}</li>@endforeach</ul>
             @endif
         @else
             <h2 class="h5">Open a drawer</h2>
@@ -71,11 +71,11 @@
             <tbody>
             @forelse($sessions as $session)
                 <tr>
-                    <td>{{ $session->reference }}<small class="d-block text-muted">{{ $session->branch?->name }} · {{ $session->opened_at->format('Y-m-d H:i') }}@if($session->closed_at) – {{ $session->closed_at->format('H:i') }}@endif</small></td>
+                    <td>{{ $session->reference }}<small class="d-block text-muted">{{ $session->branch?->name }} · {{ $session->opened_at->format('Y-m-d H:i') }}@if($session->closed_at) - {{ $session->closed_at->format('H:i') }}@endif</small></td>
                     <td>{{ $session->opener?->name }}@if($session->status === 'open') <span class="badge bg-success">Open</span>@endif</td>
-                    <td class="text-end">{{ $session->expected_cash !== null ? number_format((float) $session->expected_cash, 2) : '—' }}</td>
-                    <td class="text-end">{{ $session->counted_cash !== null ? number_format((float) $session->counted_cash, 2) : '—' }}</td>
-                    <td class="text-end {{ (float) $session->variance < 0 ? 'text-danger' : ((float) $session->variance > 0 ? 'text-warning' : '') }}">{{ $session->variance !== null ? number_format((float) $session->variance, 2) : '—' }}</td>
+                    <td class="text-end">{{ $session->expected_cash !== null ? number_format((float) $session->expected_cash, 2) : '-' }}</td>
+                    <td class="text-end">{{ $session->counted_cash !== null ? number_format((float) $session->counted_cash, 2) : '-' }}</td>
+                    <td class="text-end {{ (float) $session->variance < 0 ? 'text-danger' : ((float) $session->variance > 0 ? 'text-warning' : '') }}">{{ $session->variance !== null ? number_format((float) $session->variance, 2) : '-' }}</td>
                     <td class="small">
                         @if($session->closing_notes)<span class="d-block">{{ $session->closing_notes }}</span>@endif
                         @if($session->reviewed_at)

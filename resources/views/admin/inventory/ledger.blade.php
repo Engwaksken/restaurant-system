@@ -12,7 +12,7 @@
     </div>
     <div class="table-responsive"><table class="table table-striped">
         <thead><tr><th>Branch</th><th>Item</th><th>SKU</th><th>On hand</th><th>Unit</th><th>Minimum</th><th>Reorder level</th></tr></thead>
-        <tbody>@forelse($stocks as $stock)<tr><td>{{ $stock->branch_name }}</td><td>{{ $stock->item_name }}</td><td>{{ $stock->sku ?? '—' }}</td><td>{{ number_format((float) $stock->quantity, 3) }}</td><td>{{ $stock->usage_unit }}</td><td>{{ number_format((float) $stock->minimum_stock, 3) }}</td><td>{{ number_format((float) $stock->reorder_level, 3) }}</td></tr>@empty<tr><td colspan="7" class="text-muted">No stock records match this view.</td></tr>@endforelse</tbody>
+        <tbody>@forelse($stocks as $stock)<tr><td>{{ $stock->branch_name }}</td><td>{{ $stock->item_name }}</td><td>{{ $stock->sku ?? '-' }}</td><td>{{ number_format((float) $stock->quantity, 3) }}</td><td>{{ $stock->usage_unit }}</td><td>{{ number_format((float) $stock->minimum_stock, 3) }}</td><td>{{ number_format((float) $stock->reorder_level, 3) }}</td></tr>@empty<tr><td colspan="7" class="text-muted">No stock records match this view.</td></tr>@endforelse</tbody>
     </table></div>
     {{ $stocks->links() }}
 </div>

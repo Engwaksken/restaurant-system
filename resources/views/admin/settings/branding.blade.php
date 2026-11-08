@@ -164,7 +164,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="opening_hours">Opening hours</label>
-                        <textarea class="form-control @error('opening_hours') is-invalid @enderror" id="opening_hours" name="opening_hours" rows="2" maxlength="500" placeholder="Mon–Fri 8am–10pm&#10;Sat–Sun 10am–11pm">{{ $field('opening_hours') }}</textarea>
+                        <textarea class="form-control @error('opening_hours') is-invalid @enderror" id="opening_hours" name="opening_hours" rows="2" maxlength="500" placeholder="Mon-Fri 8am-10pm&#10;Sat-Sun 10am-11pm">{{ $field('opening_hours') }}</textarea>
                         @error('opening_hours')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>

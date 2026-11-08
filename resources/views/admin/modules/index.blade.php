@@ -169,14 +169,14 @@
                                             </span>
                                         @elseif($column === 'status')
                                             <span class="badge text-bg-light border text-dark">
-                                                {{ $value ? \Illuminate\Support\Str::headline((string) $value) : '—' }}
+                                                {{ $value ? \Illuminate\Support\Str::headline((string) $value) : '-' }}
                                             </span>
                                         @elseif(str_ends_with($column, '_at') && $value)
                                             {{ \Illuminate\Support\Carbon::parse($value)->format('d M Y H:i') }}
                                         @elseif(is_numeric($value) && in_array($column, ['amount', 'price', 'cost', 'cost_price', 'total'], true))
                                             {{ number_format((float) $value, 2) }}
                                         @else
-                                            {{ $value === null || $value === '' ? '—' : \Illuminate\Support\Str::limit((string) $value, 70) }}
+                                            {{ $value === null || $value === '' ? '-' : \Illuminate\Support\Str::limit((string) $value, 70) }}
                                         @endif
                                     </td>
                                 @endforeach

@@ -148,7 +148,7 @@
 
                             $orderType = $order->order_type
                                 ?? $order->type
-                                ?? '—';
+                                ?? '-';
 
                             $customerName = data_get($order, 'customer.name')
                                 ?? $order->customer_name
@@ -157,7 +157,7 @@
                             $tableName = data_get($order, 'table.name')
                                 ?? data_get($order, 'table.table_number')
                                 ?? $order->table_number
-                                ?? '—';
+                                ?? '-';
 
                             $status = strtolower((string) ($order->status ?? 'pending'));
                             $paymentStatus = strtolower((string) ($order->payment_status ?? 'unpaid'));

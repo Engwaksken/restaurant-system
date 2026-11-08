@@ -30,7 +30,7 @@
                         <strong class="d-block small">{{ $day->format('D j') }}</strong>
                         @forelse($shifts->filter(fn ($shift) => $shift->starts_at->isSameDay($day)) as $shift)
                             <div class="small border-top pt-1 mt-1">
-                                <strong>{{ $shift->starts_at->format('H:i') }}–{{ $shift->ends_at->format('H:i') }}</strong>
+                                <strong>{{ $shift->starts_at->format('H:i') }}-{{ $shift->ends_at->format('H:i') }}</strong>
                                 <span class="d-block">{{ $shift->user?->name }}</span>
                                 <span class="text-muted">{{ $shift->role_label }}{{ $shift->role_label ? ' · ' : '' }}{{ $shift->branch?->name }}</span>
                                 @if($manages && $shift->starts_at->isFuture())
@@ -41,7 +41,7 @@
                                 @endif
                             </div>
                         @empty
-                            <span class="small text-muted">—</span>
+                                <span class="small text-muted">-</span>
                         @endforelse
                     </div>
                 </div>
@@ -134,7 +134,7 @@
 
                         <div class="modal-body">
                             <p class="mb-1">
-                                Remove the {{ $shift->starts_at->format('H:i') }}–{{ $shift->ends_at->format('H:i') }} shift on {{ $shift->starts_at->format('D j M') }} for <strong>{{ $shift->user?->name }}</strong>?
+                                Remove the {{ $shift->starts_at->format('H:i') }}-{{ $shift->ends_at->format('H:i') }} shift on {{ $shift->starts_at->format('D j M') }} for <strong>{{ $shift->user?->name }}</strong>?
                             </p>
                             <small class="text-muted">{{ $shift->branch?->name }}</small>
                         </div>

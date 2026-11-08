@@ -11,7 +11,7 @@
         <tbody>
         @forelse($tables as $table)
             <tr>
-                <td>{{ $table->name }}</td><td>{{ $table->branch?->name ?? '—' }}</td><td>{{ $table->floor?->name ?? '—' }}</td>
+                <td>{{ $table->name }}</td><td>{{ $table->branch?->name ?? '-' }}</td><td>{{ $table->floor?->name ?? '-' }}</td>
                 <td>@if($table->qr_token)<code>{{ url('/?table=' . $table->qr_token) }}</code>@else<span class="text-muted">Not created</span>@endif</td>
                 <td class="text-end">@if($canManage && !$table->qr_token)<form method="POST" action="{{ route('admin.qr-ordering.create', $table->id) }}">@csrf<button class="btn btn-sm btn-primary">Create QR order</button></form>@elseif($table->qr_token)<span class="badge text-bg-success">Ready</span>@endif</td>
             </tr>

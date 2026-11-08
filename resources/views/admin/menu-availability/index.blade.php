@@ -32,7 +32,7 @@
         @forelse($items as $item)
             <tr class="{{ $item->is_available ? '' : 'table-danger' }}">
                 <td><strong>{{ $item->name }}</strong></td>
-                <td>{{ $item->category?->name ?? '—' }}</td>
+                <td>{{ $item->category?->name ?? '-' }}</td>
                 <td class="text-end">{{ config('restaurant.currency') }} {{ number_format((float) $item->price, 2) }}</td>
                 <td>@if($item->is_available)<span class="badge bg-success">Available</span>@else<span class="badge bg-danger">Unavailable</span>@endif</td>
                 <td class="text-end">

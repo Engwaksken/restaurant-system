@@ -61,7 +61,7 @@
                     <td>{{ $record->branch?->name }}</td>
                     <td>{{ $record->clock_in_at->format('D j M H:i') }}</td>
                     <td>{{ $record->clock_out_at?->format('H:i') ?? 'On shift' }}</td>
-                    <td class="text-end">{{ $record->clock_out_at ? number_format($record->hours(), 2) : '—' }}</td>
+                    <td class="text-end">{{ $record->clock_out_at ? number_format($record->hours(), 2) : '-' }}</td>
                     <td class="small">{{ $record->note }}@if($record->editor)<span class="d-block text-muted">Edited by {{ $record->editor->name }}</span>@endif
                         @if($manages)
                             <button type="button" class="btn btn-sm btn-outline-primary mt-1" data-bs-toggle="modal" data-bs-target="#edit-attendance-{{ $record->id }}">

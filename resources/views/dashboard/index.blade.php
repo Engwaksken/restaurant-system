@@ -82,6 +82,7 @@
         <li class="nav-item" role="presentation"><button class="nav-link active" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-pane" type="button" role="tab" aria-controls="sales-pane" aria-selected="true">Sales — last 7 days</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="sellers-tab" data-bs-toggle="tab" data-bs-target="#sellers-pane" type="button" role="tab" aria-controls="sellers-pane" aria-selected="false">Top sellers</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-pane" type="button" role="tab" aria-controls="orders-pane" aria-selected="false">Recent orders</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="mix-tab" data-bs-toggle="tab" data-bs-target="#mix-pane" type="button" role="tab" aria-controls="mix-pane" aria-selected="false">Order mix</button></li>
     </ul>
     <div class="tab-content" id="dashboardActivityTabsContent">
         <section class="tab-pane fade show active" id="sales-pane" role="tabpanel" aria-labelledby="sales-tab" tabindex="0">
@@ -123,13 +124,7 @@
                 </table></div>
             @endif
         </section>
-    </div>
-</div>
-
-<div class="row g-4">
-
-    <div class="col-xl-4">
-        <div class="panel p-4 h-100">
+        <section class="tab-pane fade" id="mix-pane" role="tabpanel" aria-labelledby="mix-tab" tabindex="0">
             <h5 class="mb-1">Order mix</h5>
             <p class="text-muted small mb-3">Last 30 days by order type</p>
             @foreach($mixMeta as $type => [$label, $icon, $color])
@@ -139,14 +134,14 @@
                         <span><i class="{{ $icon }} me-2" style="color: {{ $color }}"></i>{{ $label }}</span>
                         <span class="fw-semibold">{{ number_format($count) }} <span class="text-muted fw-normal">· {{ round($count / $mixTotal * 100) }}%</span></span>
                     </div>
-                    <div class="progress" style="height: 7px;">
-                        <div class="progress-bar" style="width: {{ round($count / $mixTotal * 100) }}%; background: {{ $color }}"></div>
-                    </div>
+                    <div class="progress" style="height: 7px;"><div class="progress-bar" style="width: {{ round($count / $mixTotal * 100) }}%; background: {{ $color }}"></div></div>
                 </div>
             @endforeach
-        </div>
+        </section>
     </div>
+</div>
 
+<div class="row g-4">
     <div class="col-12">
         <div class="row g-3">
             @foreach([
